@@ -86,7 +86,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         // On large screens, we use w-64 to maintain space.
         className={`fixed top-0 left-0 h-screen z-50 transition-all duration-300 transform flex flex-col 
                     bg-gradient-to-r from-[#012e58] to-[#1a4b7a] text-white shadow-2xl 
-                    ${isOpen ? "translate-x-0 w-64" : "-translate-x-full w-64"}`}
+                    ${
+                      isOpen ? "translate-x-0 w-64" : "-translate-x-full w-64"
+                    }`}
       >
         <div className="p-6 border-b border-white/10 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center space-x-3">
@@ -126,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <Icon className="w-5 h-5" />
                     </div>
-                    <span className="font-medium text-sm">{item.label}</span>
+                    <span className="font-medium text-md">{item.label}</span>
                   </button>
                 </li>
               );

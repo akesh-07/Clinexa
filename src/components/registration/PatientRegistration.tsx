@@ -277,7 +277,7 @@ export const PatientRegistration: React.FC = () => {
           </div>
           <button
             type="button"
-            className="flex items-center space-x-2 px-4 py-2 bg-[#012e58] text-white rounded-lg text-sm font-medium"
+            className="flex items-center space-x-2 px-4 py-2 bg-[#012e58] text-white rounded-lg text-md font-medium"
           >
             <Plus className="w-4 h-4" />
             <span>Add New</span>
@@ -406,7 +406,7 @@ export const PatientRegistration: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowMoreFields(!showMoreFields)}
-                    className="flex items-center text-xs font-medium text-[#1a4b7a]"
+                    className="flex items-center text-md font-medium text-[#1a4b7a]"
                   >
                     <ListPlus className="w-3 h-3 mr-1" />{" "}
                     {showMoreFields ? "Hide Extra Fields" : "Add Custom Fields"}{" "}
@@ -423,7 +423,7 @@ export const PatientRegistration: React.FC = () => {
                         <input
                           type="text"
                           placeholder="Label (e.g. Height)"
-                          className="w-1/2 px-2 py-1 border rounded text-xs"
+                          className="w-1/2 px-2 py-1 border rounded text-md"
                           value={newCustomField.label}
                           onChange={(e) =>
                             setNewCustomField({
@@ -435,7 +435,7 @@ export const PatientRegistration: React.FC = () => {
                         <input
                           type="text"
                           placeholder="Value (e.g. 170cm)"
-                          className="w-1/2 px-2 py-1 border rounded text-xs"
+                          className="w-1/2 px-2 py-1 border rounded text-md"
                           value={newCustomField.value}
                           onChange={(e) =>
                             setNewCustomField({
@@ -456,7 +456,7 @@ export const PatientRegistration: React.FC = () => {
                         {patientCustomFields.map((field, idx) => (
                           <div
                             key={idx}
-                            className="flex justify-between items-center bg-gray-50 p-2 rounded text-xs"
+                            className="flex justify-between items-center bg-gray-50 p-2 rounded text-md"
                           >
                             <span>
                               <span className="font-bold">{field.label}:</span>{" "}

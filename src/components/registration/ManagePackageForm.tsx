@@ -77,7 +77,7 @@ export const ManagePackageForm: React.FC<ManagePackageFormProps> = ({
 
   return (
     <div className="p-4 border border-green-300 rounded-lg bg-green-50 mt-4 space-y-3 animate-fade-in">
-      <h4 className="text-sm font-bold text-green-800 flex justify-between items-center">
+      <h4 className="text-md font-bold text-green-800 flex justify-between items-center">
         {isEditing ? "Edit Package" : "Add New Package"}
         <button
           type="button"
@@ -111,20 +111,20 @@ export const ManagePackageForm: React.FC<ManagePackageFormProps> = ({
         placeholder="Description (Hover info)"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white focus:ring-1 focus:ring-[#1a4b7a] focus:border-[#1a4b7a] transition-all duration-200 text-sm resize-none"
+        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white focus:ring-1 focus:ring-[#1a4b7a] focus:border-[#1a4b7a] transition-all duration-200 text-md resize-none"
         disabled={disabled}
       />
 
       {/* Custom Fields Section */}
       <div className="space-y-2 pt-2 border-t border-green-200">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-green-800 uppercase tracking-wider">
+          <label className="text-md font-semibold text-green-800 uppercase tracking-wider">
             Custom Details
           </label>
           <button
             type="button"
             onClick={addCustomField}
-            className="text-xs flex items-center text-green-700 hover:text-green-900 font-medium"
+            className="text-md flex items-center text-green-700 hover:text-green-900 font-medium"
           >
             <Plus className="w-3 h-3 mr-1" /> Add Field
           </button>
@@ -139,7 +139,7 @@ export const ManagePackageForm: React.FC<ManagePackageFormProps> = ({
               onChange={(e) =>
                 updateCustomField(field.id, "label", e.target.value)
               }
-              className="w-1/3 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:border-green-500"
+              className="w-1/3 px-2 py-1.5 border border-gray-300 rounded text-md focus:outline-none focus:border-green-500"
             />
             <input
               type="text"
@@ -148,7 +148,7 @@ export const ManagePackageForm: React.FC<ManagePackageFormProps> = ({
               onChange={(e) =>
                 updateCustomField(field.id, "value", e.target.value)
               }
-              className="w-1/2 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:border-green-500"
+              className="w-1/2 px-2 py-1.5 border border-gray-300 rounded text-md focus:outline-none focus:border-green-500"
             />
             <button
               type="button"
@@ -165,7 +165,7 @@ export const ManagePackageForm: React.FC<ManagePackageFormProps> = ({
         type="button"
         onClick={handleSave}
         disabled={disabled || !name || !description || !price}
-        className="w-full flex items-center justify-center space-x-1.5 px-3 py-2 bg-[#012e58] text-white rounded-lg hover:bg-[#1a4b7a] transition-colors text-sm font-medium disabled:opacity-50 mt-2"
+        className="w-full flex items-center justify-center space-x-1.5 px-3 py-2 bg-[#012e58] text-white rounded-lg hover:bg-[#1a4b7a] transition-colors text-md font-medium disabled:opacity-50 mt-2"
       >
         <Save className="w-4 h-4" />
         <span>{isEditing ? "Update Package" : "Save Package"}</span>

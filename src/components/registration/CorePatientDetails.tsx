@@ -50,7 +50,7 @@ export const CorePatientDetails: React.FC<CorePatientDetailsProps> = ({
       {/* Read-Only Info */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <div>
-          <label className="text-xs font-medium text-[#1a4b7a] mb-1 block">
+          <label className="text-md font-medium text-[#1a4b7a] mb-1 block">
             Reg Date & Time
           </label>
           <StyledInput
@@ -61,7 +61,7 @@ export const CorePatientDetails: React.FC<CorePatientDetailsProps> = ({
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-[#1a4b7a] mb-1 block">
+          <label className="text-md font-medium text-[#1a4b7a] mb-1 block">
             UHID
           </label>
           <StyledInput
@@ -109,7 +109,7 @@ export const CorePatientDetails: React.FC<CorePatientDetailsProps> = ({
       {/* DOB | Age | Sex */}
       <div className="grid grid-cols-3 gap-3 mt-3">
         <div>
-          <label className="text-xs font-medium text-[#1a4b7a] mb-1 block">
+          <label className="text-md font-medium text-[#1a4b7a] mb-1 block">
             DOB (Optional)
           </label>
           <StyledInput
@@ -123,7 +123,7 @@ export const CorePatientDetails: React.FC<CorePatientDetailsProps> = ({
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-[#1a4b7a] mb-1 block">
+          <label className="text-md font-medium text-[#1a4b7a] mb-1 block">
             Age *
           </label>
           <StyledInput
@@ -145,7 +145,7 @@ export const CorePatientDetails: React.FC<CorePatientDetailsProps> = ({
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-[#1a4b7a] mb-1 block">
+          <label className="text-md font-medium text-[#1a4b7a] mb-1 block">
             Gender *
           </label>
           <StyledInput
@@ -168,7 +168,7 @@ export const CorePatientDetails: React.FC<CorePatientDetailsProps> = ({
 
       {/* Mobile Number */}
       <div className="mt-3">
-        <label className="text-xs font-medium text-[#1a4b7a] mb-1 block">
+        <label className="text-md font-medium text-[#1a4b7a] mb-1 block">
           Primary Mobile Number *
         </label>
         <StyledInput
@@ -187,7 +187,7 @@ export const CorePatientDetails: React.FC<CorePatientDetailsProps> = ({
       {/* Registration Type & Doctor */}
       <div className="grid grid-cols-2 gap-3 mt-3">
         <div>
-          <label className="text-xs font-medium text-[#1a4b7a] mb-1 block">
+          <label className="text-md font-medium text-[#1a4b7a] mb-1 block">
             Type (Optional)
           </label>
           <StyledInput
@@ -206,7 +206,7 @@ export const CorePatientDetails: React.FC<CorePatientDetailsProps> = ({
           </StyledInput>
         </div>
         <div>
-          <label className="text-xs font-medium text-[#1a4b7a] mb-1 block">
+          <label className="text-md font-medium text-[#1a4b7a] mb-1 block">
             Consulting Doctor *
           </label>
           <div className="flex space-x-1">
@@ -217,7 +217,7 @@ export const CorePatientDetails: React.FC<CorePatientDetailsProps> = ({
                 value={docInput}
                 onChange={handleDocInputChange}
                 placeholder="Search Doctor"
-                className={`w-full px-3 py-2.5 border rounded-lg text-sm ${
+                className={`w-full px-3 py-2.5 border rounded-lg text-md ${
                   doctorError
                     ? "border-red-500"
                     : "border-gray-300 focus:ring-1 focus:ring-[#1a4b7a]"
@@ -239,11 +239,11 @@ export const CorePatientDetails: React.FC<CorePatientDetailsProps> = ({
             </button>
           </div>
           {doctorError && (
-            <p className="text-xs text-red-500 mt-1">{doctorError}</p>
+            <p className="text-md text-red-500 mt-1">{doctorError}</p>
           )}
           {/* Show selected doctor confirmation */}
           {formData.doctorAssigned && !doctorError && (
-            <p className="text-xs text-green-600 mt-1">
+            <p className="text-md text-green-600 mt-1">
               Selected: {formData.doctorAssigned}
             </p>
           )}
