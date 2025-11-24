@@ -1,37 +1,38 @@
+// src/components/auth/LoginPage.tsx
+
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Cookies from "js-cookie";
-import { Eye, EyeOff, User, Lock, Mail, ChevronDown } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import HMS_LOGO from "../layout/hms-logo.png";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
+import { UserRole } from "../../contexts/AuthContext"; // Import UserRole for type safety
 
-// Interface for the form data
+// Interface for the form data (Role field removed)
 interface LoginForm {
   email: string;
   password: string;
-  role: string;
 }
 
-const userRoles = [
-  { value: "doctor", label: "Login as Doctor", icon: "👨‍⚕️", route: "/pre-opd" },
-  { value: "pharmacist", label: "Login as Pharmacist", icon: "💊", route: "/pharmacy" },
-  { value: "technician", label: "Login as Technician", icon: "🔬", route: "/lab-requests" },
-  { value: "receptionist", label: "Login as Receptionist", icon: "📋", route: "/registration" },
-  { value: "staff-nurse", label: "Login as Staff Nurse", icon: "👩‍⚕️", route: "/pre-opd" }
+// Keep role routes defined for navigation, independent of dropdown UI
+const roleInfo: { value: UserRole, icon: string, route: string }[] = [
+  { value: "doctor", icon: "👨‍⚕️", route: "/pre-opd" },
+  { value: "pharmacist", icon: "💊", route: "/pharmacy" },
+  { value: "technician", icon: "🔬", route: "/lab-requests" },
+  { value: "receptionist", icon: "📋", route: "/registration" },
+  { value: "staff-nurse", icon: "👩‍⚕️", route: "/pre-opd" }
 ];
 
 const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState<LoginForm>({
     email: "",
     password: "",
-    role: ""
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [errors, setErrors] = useState<Partial<LoginForm>>({});
   const [loginError, setLoginError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -50,19 +51,12 @@ const LoginPage: React.FC = () => {
     if (loginError) setLoginError("");
   };
 
-  const handleRoleSelect = (role: string) => {
-    setFormData((prev) => ({ ...prev, role }));
-    setIsDropdownOpen(false);
-
-    if (errors.role) {
-      setErrors((prev) => ({ ...prev, role: "" }));
-    }
-  };
+  // Removed handleRoleSelect and isDropdownOpen state
 
   const validateForm = (): boolean => {
     const newErrors: Partial<LoginForm> = {};
 
-    if (!formData.role) newErrors.role = "Please select your role";
+    // Role check removed
 
     if (!formData.email) {
       newErrors.email = "Email is required";
@@ -90,45 +84,51 @@ const LoginPage: React.FC = () => {
     try {
       const normalizedEmail = formData.email.trim().toLowerCase();
 
+      // 1. Firebase Auth Sign In
       const userCredential = await signInWithEmailAndPassword(
         auth,
         normalizedEmail,
         formData.password
       );
 
-      // Default username
       let userName =
         userCredential.user.displayName ||
         normalizedEmail.split("@")[0] ||
         "User";
+      let userRole: UserRole | string = "";
 
-      // Fetch doctor name if role = doctor
-      if (formData.role === "doctor") {
-        const q = query(
-          collection(db, "doctors"),
-          where("email", "==", normalizedEmail)
-        );
-        const querySnapshot = await getDocs(q);
+      // 2. Fetch role and name from 'staff' collection (as primary source for all staff)
+      const staffQuery = query(collection(db, "staff"), where("email", "==", normalizedEmail));
+      let snap = await getDocs(staffQuery);
 
-        if (!querySnapshot.empty) {
-          const doctorData = querySnapshot.docs[0].data() as any;
+      if (!snap.empty) {
+        // User found in staff collection
+        const docData = snap.docs[0].data() as any;
+        userName = docData.sName;
+        userRole = docData.role;
+
+      } else {
+        // 3. Fallback check: Check 'doctors' collection (for existing doctor data not mirrored in staff)
+        const doctorQuery = query(collection(db, "doctors"), where("email", "==", normalizedEmail));
+        snap = await getDocs(doctorQuery);
+
+        if (!snap.empty) {
+          const doctorData = snap.docs[0].data() as any;
           userName = doctorData.doc_name || userName;
+          userRole = "doctor"; // Explicitly set role for records in doctors collection
+        } else {
+          // Final fallback if no user data/role is found
+          throw new Error("User role not configured. Please contact administration.");
         }
       }
 
-
-       const q = query(collection(db, "staff"), where("email", "==", normalizedEmail));
-  const snap = await getDocs(q);
-
-  if (!snap.empty) {
-    // If there are multiple docs for the same email, you might want to pick the first,
-    // or handle duplicates explicitly.
-    const docData = snap.docs[0].data() as any;
-  userName=docData.sName;
-  }
+      // Check if a valid role was found
+      if (!userRole || !roleInfo.some(r => r.value === userRole)) {
+         throw new Error("User role not recognized or configured correctly.");
+      }
 
       // Store secure cookies
-      Cookies.set("userRole", formData.role, {
+      Cookies.set("userRole", userRole, {
         expires: 7,
         secure: true,
         sameSite: "Strict",
@@ -144,15 +144,16 @@ const LoginPage: React.FC = () => {
       setUser({
         id: userCredential.user.uid,
         email: normalizedEmail,
-        role: formData.role,
+        role: userRole as UserRole,
         name: userName,
       });
 
-      const selectedRole = userRoles.find((r) => r.value === formData.role);
+      const selectedRole = roleInfo.find((r) => r.value === userRole);
 
       if (selectedRole) {
         navigate(selectedRole.route, { replace: true });
       } else {
+        // Fallback in case of an unmapped role, though checked above
         navigate("/dashboard", { replace: true });
       }
     } catch (error: any) {
@@ -166,6 +167,8 @@ const LoginPage: React.FC = () => {
         errorMessage = "Invalid email or password.";
       } else if (error.code === "auth/network-request-failed") {
         errorMessage = "Network error. Please check your connection.";
+      } else if (error.message.includes("User role not configured")) {
+         errorMessage = "Staff record not found. Please contact administration.";
       }
 
       setLoginError(errorMessage);
@@ -174,7 +177,6 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const selectedRole = userRoles.find((role) => role.value === formData.role);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#e0f7fa] via-white to-[#e0f2f1] flex items-center justify-center p-4">
@@ -188,6 +190,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8 backdrop-blur-sm border border-gray-100">
+          <h2 className="text-2xl font-bold text-[#0B2D4D] text-center mb-6">Sign In</h2>
           {loginError && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-lg text-red-600">{loginError}</p>
@@ -195,60 +198,7 @@ const LoginPage: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* ROLE FIELD */}
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-[#0B2D4D]">
-                Select Your Role
-              </label>
-
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className={`w-full flex items-center justify-between pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#1a4b7a] transition-all duration-200 ${
-                    errors.role ? "border-red-500 bg-red-50" : "border-gray-300"
-                  }`}
-                >
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <span className="flex items-center gap-2">
-                    {selectedRole ? (
-                      <>
-                        <span>{selectedRole.icon}</span>
-                        <span>{selectedRole.label}</span>
-                      </>
-                    ) : (
-                      "Select your role"
-                    )}
-                  </span>
-                  <ChevronDown
-                    className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
-                      isDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {isDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                    {userRoles.map((role) => (
-                      <button
-                        key={role.value}
-                        type="button"
-                        onClick={() => handleRoleSelect(role.value)}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#e0f7fa] transition-colors first:rounded-t-lg last:rounded-b-lg"
-                      >
-                        <span className="text-lg">{role.icon}</span>
-                        <span className="text-[#0B2D4D]">{role.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {errors.role && (
-                <p className="text-lg text-red-600">{errors.role}</p>
-              )}
-            </div>
-
+            
             {/* EMAIL FIELD */}
             <div className="space-y-2">
               <label className="block text-lg font-medium text-[#0B2D4D]">
