@@ -1,4 +1,4 @@
-// Sidebar.tsx
+// src/components/layout/Sidebar.tsx
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -8,7 +8,6 @@ import {
   LineChart,
   FlaskConical,
   X,
-  Menu,
   Bed,
 } from "lucide-react";
 import { UserRole } from "../../contexts/AuthContext";
@@ -50,7 +49,6 @@ const rolePermissions: Record<UserRole, string[]> = {
   pharmacist: ["dashboard", "pharmacy"],
   "staff-nurse": ["dashboard", "queue", "ipd-queue"],
   receptionist: ["dashboard", "registration", "queue"],
-  // 🟢 Technician Role Configuration for Dashboard (Analytics) and Lab Requests
   technician: ["dashboard", "lab-requests"],
 };
 
@@ -79,16 +77,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden" // Overlay only on mobile
           onClick={onClose}
         ></div>
       )}
       <aside
-        // Key Fixes: h-screen ensures full viewport height.
-        // flex flex-col makes content stack vertically and utilize full height.
+        // 🟢 Universal Fixed Toggle Logic: Sidebar uses fixed positioning and translates off-screen when closed.
+        // On large screens, we use w-64 to maintain space.
         className={`fixed top-0 left-0 h-screen z-50 transition-all duration-300 transform flex flex-col 
-                    ${isOpen ? "translate-x-0 w-64" : "-translate-x-full w-0"}
-                    bg-gradient-to-r from-[#012e58] to-[#1a4b7a] text-white shadow-2xl lg:relative lg:translate-x-0 lg:w-64`}
+                    bg-gradient-to-r from-[#012e58] to-[#1a4b7a] text-white shadow-2xl 
+                    ${
+                      isOpen ? "translate-x-0 w-64" : "-translate-x-full w-64"
+                    }`}
       >
         <div className="p-6 border-b border-white/10 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center space-x-3">
@@ -96,12 +96,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="lg:hidden p-1.5 text-white/80 hover:bg-white/10 rounded-lg"
+            className="lg:hidden p-1.5 text-white/80 hover:bg-white/10 rounded-lg" // The 'X' button still hides on desktop
           >
             <X className="w-6 h-6" />
           </button>
         </div>
-        {/* Navigation now uses flex-1 to fill remaining vertical space */}
+        {/* Navigation */}
         <nav className="p-4 flex-1 overflow-y-auto">
           <ul className="space-y-2">
             {visibleItems.map((item) => {
