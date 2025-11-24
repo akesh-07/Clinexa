@@ -9,7 +9,7 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, currentSection }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default to open for desktop view
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -19,21 +19,22 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentSection }) => {
     setIsSidebarOpen(false);
   };
 
+  // Dynamic class controls margin shift for content on desktop (lg:ml-64 or lg:ml-0)
+  const contentClass = isSidebarOpen
+    ? 'lg:ml-64' 
+    : 'lg:ml-0'; 
+
   return (
-    // FIX: Set main container to h-screen and hidden overflow
     <div className="flex h-screen w-full bg-gray-100 overflow-hidden">
       <Sidebar
         activeSection={currentSection}
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
       />
-      <div className="flex-1 flex flex-col overflow-y-auto">
-        {" "}
-        {/* <-- Allow only this column to scroll */}
+      {/* 🟢 Dynamic margin shift applied here */}
+      <div className={`flex-1 flex flex-col overflow-y-auto transition-all duration-300 ${contentClass}`}>
         <Header currentSection={currentSection} onMenuClick={toggleSidebar} />
         <main className="p-8 flex-1">
-          {" "}
-          {/* Removed overflow-auto as it's now on the parent div */}
           {children}
         </main>
       </div>
