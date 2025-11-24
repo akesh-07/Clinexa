@@ -19,10 +19,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentSection }) => {
     setIsSidebarOpen(false);
   };
 
-  // Dynamic class controls margin shift for content on desktop (lg:ml-64 or lg:ml-0)
+  // Dynamic class controls margin shift for content on desktop
   const contentClass = isSidebarOpen
-    ? 'lg:ml-64' 
-    : 'lg:ml-0'; 
+    ? 'lg:ml-64' // Full width margin when open
+    : 'lg:ml-20'; // 🟢 Mini-sidebar width margin when closed
 
   return (
     <div className="flex h-screen w-full bg-gray-100 overflow-hidden">
@@ -31,9 +31,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentSection }) => {
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
       />
-      {/* 🟢 Dynamic margin shift applied here */}
+      {/* 🟢 Applying dynamic margin to the content container */}
       <div className={`flex-1 flex flex-col overflow-y-auto transition-all duration-300 ${contentClass}`}>
-        <Header currentSection={currentSection} onMenuClick={toggleSidebar} />
+        <Header 
+            currentSection={currentSection} 
+            onMenuClick={toggleSidebar} 
+            isSidebarOpen={isSidebarOpen} 
+        />
         <main className="p-8 flex-1">
           {children}
         </main>

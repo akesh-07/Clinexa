@@ -1,18 +1,19 @@
 // src/components/layout/Header.tsx
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie"; // Import the Cookies library
-import { User, Bell, Settings, LogOut, Menu } from "lucide-react"; // 🟢 Import Menu icon
+import { User, Bell, Settings, LogOut, Menu, X } from "lucide-react"; // 🟢 Import X icon
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 
 interface HeaderProps {
   currentSection: string;
-  onMenuClick: () => void; // 🟢 Added prop for menu toggle
+  onMenuClick: () => void;
+  isSidebarOpen: boolean; // 🟢 Added isSidebarOpen prop
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentSection, onMenuClick }) => { // 🟢 Accept onMenuClick
-  const [userName, setUserName] = useState<string | null>(null); // State to hold the user's name
-  const [userRole, setUserRole] = useState<string | null>(null); // State to hold the user's role
+export const Header: React.FC<HeaderProps> = ({ currentSection, onMenuClick, isSidebarOpen }) => { 
+  const [userName, setUserName] = useState<string | null>(null); 
+  const [userRole, setUserRole] = useState<string | null>(null); 
   const navigate = useNavigate();
   const { logout } = useAuth();
 
@@ -31,7 +32,7 @@ export const Header: React.FC<HeaderProps> = ({ currentSection, onMenuClick }) =
     if (roleFromCookie) {
       setUserRole(roleFromCookie);
     }
-  }, []); // The empty dependency array ensures this runs only once
+  }, []); 
 
   // Function to format role for display (e.g., "technician" -> "Technician")
   const formatRole = (role: string | null): string => {
@@ -46,12 +47,16 @@ export const Header: React.FC<HeaderProps> = ({ currentSection, onMenuClick }) =
     <header className="bg-gradient-to-r from-[#012e58] to-[#1a4b7a] border-b border-white/10 px-6 py-4">
       <div className="flex items-center justify-between">
         
-        {/* 🟢 Menu Button (Now visible on all screens) */}
+        {/* 🟢 Toggle Button: Switches between Menu and X icon */}
         <button
           onClick={onMenuClick}
-          className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors mr-3" // 🟢 Removed lg:hidden
+          className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors mr-3" 
         >
-          <Menu className="w-6 h-6" />
+          {isSidebarOpen ? (
+              <X className="w-6 h-6" /> // Show X when open
+          ) : (
+              <Menu className="w-6 h-6" /> // Show Menu when closed
+          )}
         </button>
 
         <div className="flex items-center space-x-4 flex-grow">

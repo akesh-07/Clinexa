@@ -82,21 +82,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ></div>
       )}
       <aside
-        // 🟢 Universal Fixed Toggle Logic: Sidebar uses fixed positioning and translates off-screen when closed.
-        // On large screens, we use w-64 to maintain space.
+        // 🟢 UNIVERSAL MINI-SIDEBAR LOGIC
         className={`fixed top-0 left-0 h-screen z-50 transition-all duration-300 transform flex flex-col 
                     bg-gradient-to-r from-[#012e58] to-[#1a4b7a] text-white shadow-2xl 
-                    ${
-                      isOpen ? "translate-x-0 w-64" : "-translate-x-full w-64"
-                    }`}
+                    // Mobile: Hidden when closed. Desktop: W-64/W-20
+                    ${isOpen ? "translate-x-0 w-64" : "-translate-x-full w-64 lg:translate-x-0 lg:w-20"}`}
       >
         <div className="p-6 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+          {/* 🟢 Hide logo when in mini-mode on desktop, hide 'X' button on desktop */}
           <div className="flex items-center space-x-3">
-            <img src={HMS_LOGO} alt="logo" className="w-full" />
+            <img src={HMS_LOGO} alt="logo" className={`w-full transition-opacity duration-300 ${!isOpen && 'opacity-0 lg:hidden'}`} />
           </div>
           <button
             onClick={onClose}
-            className="lg:hidden p-1.5 text-white/80 hover:bg-white/10 rounded-lg" // The 'X' button still hides on desktop
+            className="lg:hidden p-1.5 text-white/80 hover:bg-white/10 rounded-lg"
           >
             <X className="w-6 h-6" />
           </button>
@@ -113,9 +112,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <li key={item.id}>
                   <button
                     onClick={() => navigate(item.path)}
-                    className={`w-full flex items-center space-x-4 px-4 py-3 rounded-xl text-left transition-all duration-300 group ${
-                      isActive
-                        ? "bg-white/20 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                    className={`w-full flex items-center px-4 py-3 rounded-xl text-left transition-all duration-300 group 
+                    ${isOpen ? 'space-x-4' : 'justify-center lg:justify-start'}
+                    // 🟢 FIX: Active state styling logic adjusted to remove glass effect when closed
+                    ${
+                      isActive && isOpen
+                        ? "bg-white/20 text-white shadow-lg backdrop-blur-sm border border-white/20" // Full glassy effect when OPEN
+                        : isActive && !isOpen
+                        ? "bg-white/15 text-white" // 🟢 Clean highlight: removed border/blur for simpler highlight when CLOSED
                         : "text-white/80 hover:bg-white/10 hover:text-white"
                     }`}
                   >
@@ -128,7 +132,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <Icon className="w-5 h-5" />
                     </div>
-                    <span className="font-medium text-md">{item.label}</span>
+                    {/* 🟢 Conditionally hide text when in mini mode */}
+                    <span className={`font-medium text-sm transition-opacity duration-300 ${!isOpen && 'lg:opacity-0 lg:w-0 overflow-hidden'}`}>
+                      {item.label}
+                    </span>
                   </button>
                 </li>
               );
