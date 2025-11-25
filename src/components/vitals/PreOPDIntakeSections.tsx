@@ -18,6 +18,8 @@ import {
   Eye,
   EyeOff,
   ClipboardCopy,
+  Clock,
+  FileText,
 } from "lucide-react";
 import {
   Complaint,
@@ -513,6 +515,7 @@ export const ChronicConditionsSection: React.FC<
             {data.map((condition) => {
               const uncontrolledWarning = getUncontrolledWarning(condition);
               const isExpanded = selectedCondition === condition.id;
+              const isCustomDuration = typeof condition.duration === "object";
 
               return (
                 <div
@@ -573,39 +576,81 @@ export const ChronicConditionsSection: React.FC<
                     <div className="p-4 border-t border-gray-200 bg-white">
                       {/* Condition Details */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        {/* DURATION LOGIC */}
                         <div>
                           <label className="block text-lg font-medium text-gray-700 mb-1">
                             Duration
                           </label>
                           <select
-                            value={
-                              typeof condition.duration === "string"
-                                ? condition.duration
-                                : "Custom"
-                            }
-                            onChange={(e) =>
-                              updateCondition(condition.id, {
-                                duration:
-                                  e.target.value === "Unknown"
-                                    ? "Unknown"
-                                    : {
-                                        years: parseInt(e.target.value) || 0,
-                                        months: 0,
-                                      },
-                              })
-                            }
+                            value={isCustomDuration ? "Custom" : "Unknown"}
+                            onChange={(e) => {
+                              if (e.target.value === "Unknown") {
+                                updateCondition(condition.id, {
+                                  duration: "Unknown",
+                                });
+                              } else {
+                                updateCondition(condition.id, {
+                                  duration: { years: 0, months: 0 },
+                                });
+                              }
+                            }}
                             className={InputStyle}
                           >
                             <option value="Unknown">Unknown</option>
-                            <option value="< 1 year">Less than 1 year</option>
-                            <option value="1-5 years">1-5 years</option>
-                            <option value="5-10 years">5-10 years</option>
-                            <option value="> 10 years">
-                              More than 10 years
-                            </option>
-                            <option value="Custom">Custom</option>
+                            <option value="Custom">Custom Duration</option>
                           </select>
+
+                          {/* Custom Duration Inputs */}
+                          {isCustomDuration && (
+                            <div className="flex space-x-2 mt-2 animate-fade-in">
+                              <div className="flex-1">
+                                <input
+                                  type="number"
+                                  placeholder="Yrs"
+                                  min="0"
+                                  className={InputStyle}
+                                  value={
+                                    (condition.duration as any).years || ""
+                                  }
+                                  onChange={(e) =>
+                                    updateCondition(condition.id, {
+                                      duration: {
+                                        ...(condition.duration as any),
+                                        years: parseInt(e.target.value) || 0,
+                                      },
+                                    })
+                                  }
+                                />
+                                <span className="text-xs text-gray-500 ml-1">
+                                  Years
+                                </span>
+                              </div>
+                              <div className="flex-1">
+                                <input
+                                  type="number"
+                                  placeholder="Mos"
+                                  min="0"
+                                  className={InputStyle}
+                                  value={
+                                    (condition.duration as any).months || ""
+                                  }
+                                  onChange={(e) =>
+                                    updateCondition(condition.id, {
+                                      duration: {
+                                        ...(condition.duration as any),
+                                        months: parseInt(e.target.value) || 0,
+                                      },
+                                    })
+                                  }
+                                />
+                                <span className="text-xs text-gray-500 ml-1">
+                                  Months
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
+
                         <div>
                           <label className="block text-lg font-medium text-gray-700 mb-1">
                             On Medication
@@ -624,17 +669,38 @@ export const ChronicConditionsSection: React.FC<
                             <option value="No">No</option>
                           </select>
                         </div>
-                        <div className="flex items-end">
+
+                        <div className="flex flex-col justify-end">
                           <button
                             onClick={() =>
                               addMedicationToCondition(condition.id)
                             }
-                            className="flex items-center space-x-1 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-lg"
+                            className="flex items-center justify-center space-x-1 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-lg w-full mb-1"
                           >
                             <Plus className="w-4 h-4" />
                             <span>Add Medication</span>
                           </button>
                         </div>
+                      </div>
+
+                      {/* Notes / Custom Field */}
+                      <div className="mb-4">
+                        <label className="block text-lg font-medium text-gray-700 mb-1 flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-gray-500" />
+                          Notes / Comments
+                        </label>
+                        <textarea
+                          placeholder="Add notes, severity, or other details..."
+                          className="w-full p-2 border border-gray-300 rounded-md text-lg focus:ring-2 focus:ring-[#012e58] focus:border-[#012e58]"
+                          rows={2}
+                          // NOTE: Assuming 'notes' might be added to the type later. Casting to any to avoid TS error if property missing.
+                          value={(condition as any).notes || ""}
+                          onChange={(e) =>
+                            updateCondition(condition.id, {
+                              notes: e.target.value,
+                            } as any)
+                          }
+                        />
                       </div>
 
                       {/* Uncontrolled Warning */}
