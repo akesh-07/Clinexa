@@ -1,3 +1,4 @@
+// src/components/doctor/DoctorModule.tsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Stethoscope,
@@ -607,13 +608,25 @@ const DoctorModuleContent: React.FC<DoctorModuleProps> = ({
           setSymptomOptions(options);
         } else {
           setSymptomOptions([
-            "Fever", "Cold", "Cough", "Diarrhea", "Vomiting", "Headache", "Back Pain",
+            "Fever",
+            "Cold",
+            "Cough",
+            "Diarrhea",
+            "Vomiting",
+            "Headache",
+            "Back Pain",
           ]);
         }
       } catch (error) {
         console.error("Error fetching symptoms:", error);
         setSymptomOptions([
-          "Fever", "Cold", "Cough", "Diarrhea", "Vomiting", "Headache", "Back Pain",
+          "Fever",
+          "Cold",
+          "Cough",
+          "Diarrhea",
+          "Vomiting",
+          "Headache",
+          "Back Pain",
         ]);
       }
     };
@@ -627,7 +640,11 @@ const DoctorModuleContent: React.FC<DoctorModuleProps> = ({
     if (!trimmedSymptom) return;
 
     // 1. Update Local State immediately (Optimistic UI)
-    if (!symptomOptions.some((s) => s.toLowerCase() === trimmedSymptom.toLowerCase())) {
+    if (
+      !symptomOptions.some(
+        (s) => s.toLowerCase() === trimmedSymptom.toLowerCase()
+      )
+    ) {
       setSymptomOptions((prev) => [...prev, trimmedSymptom]);
     }
 
@@ -636,7 +653,7 @@ const DoctorModuleContent: React.FC<DoctorModuleProps> = ({
       // Create a clean ID: "Severe Headache" -> "severe_headache"
       const docId = trimmedSymptom.toLowerCase().replace(/[^a-z0-9]/g, "_");
       const symptomRef = doc(db, "symptoms", docId);
-      
+
       await setDoc(
         symptomRef,
         {
@@ -734,55 +751,56 @@ const DoctorModuleContent: React.FC<DoctorModuleProps> = ({
     value: string;
     unit: string;
   }[] => {
-    if (!vitals) {
-      return [
-        { label: "BP", value: "N/A", unit: "mmHg" },
-        { label: "PR", value: "N/A", unit: "bpm" },
-        { label: "SpO₂", value: "N/A", unit: "%" },
-        { label: "BMI", value: "N/A", unit: "" },
-        { label: "RR", value: "N/A", unit: "/min" },
-        { label: "Wt", value: "N/A", unit: "kg" },
-        { label: "Ht", value: "N/A", unit: "cm" },
-      ];
-    }
-
-    return [
+    // Standard Vitals List
+    const standardVitals = [
       {
         label: "BP",
-        value: formatBloodPressure(vitals),
+        value: vitals ? formatBloodPressure(vitals) : "N/A",
         unit: "mmHg",
       },
       {
         label: "PR",
-        value: vitals.pulse?.toString() || "N/A",
+        value: vitals?.pulse?.toString() || "N/A",
         unit: "bpm",
       },
       {
         label: "SpO₂",
-        value: vitals.spo2?.toString() || "N/A",
+        value: vitals?.spo2?.toString() || "N/A",
         unit: "%",
       },
       {
         label: "BMI",
-        value: vitals.bmi?.toString() || "N/A",
+        value: vitals?.bmi?.toString() || "N/A",
         unit: "",
       },
       {
         label: "RR",
-        value: vitals.respiratoryRate?.toString() || "N/A",
+        value: vitals?.respiratoryRate?.toString() || "N/A",
         unit: "/min",
       },
       {
         label: "Wt",
-        value: vitals.weight?.toString() || "N/A",
+        value: vitals?.weight?.toString() || "N/A",
         unit: "kg",
       },
       {
         label: "Ht",
-        value: vitals.height?.toString() || "N/A",
+        value: vitals?.height?.toString() || "N/A",
         unit: "cm",
       },
     ];
+
+    // 🚨 MODIFIED: Append Custom Vitals if they exist
+    if (vitals?.customVitals && vitals.customVitals.length > 0) {
+      const custom = vitals.customVitals.map((v) => ({
+        label: v.name,
+        value: v.value,
+        unit: v.unit,
+      }));
+      return [...standardVitals, ...custom];
+    }
+
+    return standardVitals;
   };
 
   const inputStyle =
@@ -1020,6 +1038,7 @@ const DoctorModuleContent: React.FC<DoctorModuleProps> = ({
             <div className="lg:col-span-3 bg-white p-4 rounded-lg border border-gray-200 shadow-md">
               <SectionHeader icon={Activity} title="Current Vitals Snapshot" />
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {/* 🚨 MODIFIED: Uses getVitalsDisplay() which now includes custom vitals */}
                 {getVitalsDisplay().map((vital) => (
                   <div
                     key={vital.label}

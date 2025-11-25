@@ -46,6 +46,13 @@ export interface Vitals {
     heartDisease: boolean;
     kidney: boolean;
   };
+  // ✅ NEW: Added custom vitals array
+  customVitals?: {
+    id: string;
+    name: string;
+    value: string;
+    unit: string;
+  }[];
   recordedAt: any;
   recordedBy: string;
 }
