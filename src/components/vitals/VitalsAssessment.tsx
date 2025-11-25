@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useMemo,
   useState,
-  useRef, // Import useRef
+  useRef,
 } from "react";
 import {
   Activity,
@@ -21,6 +21,8 @@ import {
   Gauge,
   Waves,
   Droplet,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { db } from "../../firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
@@ -34,6 +36,13 @@ export interface Patient {
   age: number;
   gender: "Male" | "Female" | "Other";
   chronicConditions?: string[];
+}
+
+export interface CustomVital {
+  id: string;
+  name: string;
+  value: string;
+  unit: string;
 }
 
 export interface VitalsState {
@@ -56,6 +65,7 @@ export interface VitalsState {
     heartDisease: boolean;
     kidney: boolean;
   };
+  customVitals: CustomVital[]; // New field for custom vitals
 }
 
 // --- CONSTANTS ---
@@ -79,12 +89,16 @@ const INITIAL_VITALS_STATE: VitalsState = {
     heartDisease: false,
     kidney: false,
   },
+  customVitals: [],
 };
 
 const ACTIONS = {
   UPDATE_VITAL: "UPDATE_VITAL",
   TOGGLE_RISK_FLAG: "TOGGLE_RISK_FLAG",
   RESET_VITALS: "RESET_VITALS",
+  ADD_CUSTOM_VITAL: "ADD_CUSTOM_VITAL",
+  REMOVE_CUSTOM_VITAL: "REMOVE_CUSTOM_VITAL",
+  UPDATE_CUSTOM_VITAL: "UPDATE_CUSTOM_VITAL",
 };
 
 // --- REDUCER FUNCTION ---
@@ -105,6 +119,34 @@ function vitalsReducer(
           ...state.riskFlags,
           [flag]: !state.riskFlags[flag as keyof VitalsState["riskFlags"]],
         },
+      };
+    }
+    case ACTIONS.ADD_CUSTOM_VITAL: {
+      const newVital: CustomVital = {
+        id: Date.now().toString(),
+        name: "",
+        value: "",
+        unit: "",
+      };
+      return {
+        ...state,
+        customVitals: [...state.customVitals, newVital],
+      };
+    }
+    case ACTIONS.REMOVE_CUSTOM_VITAL: {
+      const { id } = action.payload;
+      return {
+        ...state,
+        customVitals: state.customVitals.filter((v) => v.id !== id),
+      };
+    }
+    case ACTIONS.UPDATE_CUSTOM_VITAL: {
+      const { id, field, value } = action.payload;
+      return {
+        ...state,
+        customVitals: state.customVitals.map((v) =>
+          v.id === id ? { ...v, [field]: value } : v
+        ),
       };
     }
     case ACTIONS.RESET_VITALS:
@@ -378,13 +420,11 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
     return null;
   }, [vitals.bmi, getBMICategory]);
 
-  // --- MODIFIED INPUT HANDLER FOR BP ---
   const handleVitalChange = useCallback(
     (field: keyof VitalsState, value: string) => {
-      // 1. SPECIAL HANDLING: BP Systolic (Allow "/" for splitting and focusing)
+      // SPECIAL HANDLING: BP Systolic (Allow "/" for splitting)
       if (field === "bpSystolic" && value.includes("/")) {
         const parts = value.split("/");
-        // Update Systolic (first part)
         dispatch({
           type: ACTIONS.UPDATE_VITAL,
           payload: {
@@ -392,7 +432,6 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
             value: parts[0].replace(/[^0-9]/g, ""),
           },
         });
-        // Update Diastolic (second part) if exists
         if (parts.length > 1) {
           dispatch({
             type: ACTIONS.UPDATE_VITAL,
@@ -402,14 +441,13 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
             },
           });
         }
-        // Programmatically move focus to the diastolic input
+        // Focus diastolic input
         if (diastolicInputRef.current) {
           diastolicInputRef.current.focus();
         }
-        return; // Stop further processing
+        return;
       }
 
-      // 2. Standard Sanitization for numeric fields
       let sanitizedValue = value;
       if (
         [
@@ -441,6 +479,26 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
     },
     []
   );
+
+  // --- HANDLERS FOR CUSTOM VITALS ---
+  const handleAddCustomVital = () => {
+    dispatch({ type: ACTIONS.ADD_CUSTOM_VITAL, payload: {} });
+  };
+
+  const handleRemoveCustomVital = (id: string) => {
+    dispatch({ type: ACTIONS.REMOVE_CUSTOM_VITAL, payload: { id } });
+  };
+
+  const handleUpdateCustomVital = (
+    id: string,
+    field: keyof CustomVital,
+    value: string
+  ) => {
+    dispatch({
+      type: ACTIONS.UPDATE_CUSTOM_VITAL,
+      payload: { id, field, value },
+    });
+  };
 
   const validateVitals = useCallback(() => {
     const errors: Record<string, string> = {};
@@ -562,6 +620,8 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
           heartDisease: vitals.riskFlags.heartDisease,
           kidney: vitals.riskFlags.kidney,
         },
+        // Include custom vitals in submission
+        customVitals: vitals.customVitals,
         recordedAt: Timestamp.now(),
         recordedBy: "Medical Staff",
         status: "completed",
@@ -600,6 +660,14 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
     setIsAiLoading(true);
     setAiSummary("");
 
+    // Updated Prompt to include Custom Vitals
+    const customVitalsText =
+      vitals.customVitals.length > 0
+        ? vitals.customVitals
+            .map((v) => `- ${v.name}: ${v.value} ${v.unit}`)
+            .join("\n")
+        : "None";
+
     const prompt = `
         Analyze the following patient vitals and provide a brief summary.
         Patient Information:
@@ -610,7 +678,7 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
           selectedPatient.chronicConditions?.join(", ") || "None"
         }
 
-        Vitals:
+        Standard Vitals:
         - Weight: ${vitals.weight || "N/A"} kg
         - Height: ${vitals.height || "N/A"} cm
         - BMI: ${vitals.bmi || "N/A"}
@@ -626,6 +694,9 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
         - GCS (E/V/M): ${vitals.gcsE || "N/A"}/${vitals.gcsV || "N/A"}/${
       vitals.gcsM || "N/A"
     }
+
+        Additional Custom Vitals:
+        ${customVitalsText}
       `;
 
     try {
@@ -643,7 +714,7 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
               {
                 role: "system",
                 content:
-                  "You are a medical assistant. Analyze the provided patient vitals and generate a concise summary. Highlight any abnormal vitals or red flags. Referencing normal ranges: Temp(97.8-99.1°F), Pulse(60-100bpm), Resp(12-20/min), SpO2(95-100%), BP(Sys<120, Dia<80).",
+                  "You are a medical assistant. Analyze the provided patient vitals and generate a concise summary. Highlight any abnormal vitals or red flags.",
               },
               {
                 role: "user",
@@ -823,7 +894,7 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
               100,
               100
             )}
-            diastolicRef={diastolicInputRef} // Pass the ref here
+            diastolicRef={diastolicInputRef}
           />
           <MAPResultCard map={vitals.map} />
 
@@ -938,6 +1009,91 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
           </div>
         </div>
 
+        {/* CUSTOM VITALS SECTION */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-[#0B2D4D] flex items-center space-x-2">
+              <Activity className="w-5 h-5 text-[#012e58]" />
+              <span>Additional / Custom Vitals</span>
+            </h3>
+            <button
+              onClick={handleAddCustomVital}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-[#012e58] text-white rounded-md hover:bg-[#1a4b7a] transition-colors text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Custom Vital</span>
+            </button>
+          </div>
+
+          {vitals.customVitals.length === 0 ? (
+            <div className="text-center py-4 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+              <p>No custom vitals added yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {vitals.customVitals.map((vital) => (
+                <div
+                  key={vital.id}
+                  className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                >
+                  <div className="flex-1 min-w-[200px]">
+                    <input
+                      type="text"
+                      placeholder="Vital Name (e.g. Random Blood Sugar)"
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#012e58] focus:border-[#012e58]"
+                      value={vital.name}
+                      onChange={(e) =>
+                        handleUpdateCustomVital(
+                          vital.id,
+                          "name",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="w-32">
+                    <input
+                      type="text"
+                      placeholder="Value"
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#012e58] focus:border-[#012e58]"
+                      value={vital.value}
+                      onChange={(e) =>
+                        handleUpdateCustomVital(
+                          vital.id,
+                          "value",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="w-24">
+                    <input
+                      type="text"
+                      placeholder="Unit"
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#012e58] focus:border-[#012e58]"
+                      value={vital.unit}
+                      onChange={(e) =>
+                        handleUpdateCustomVital(
+                          vital.id,
+                          "unit",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </div>
+                  <button
+                    onClick={() => handleRemoveCustomVital(vital.id)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                    title="Remove Vital"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {!isSubcomponent && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -1035,9 +1191,12 @@ const VitalCard: React.FC<{
   value: string;
   unit: string;
   icon: React.ComponentType<any>;
-  field: keyof Omit<VitalsState, "riskFlags" | "bmi" | "map">;
+  field: keyof Omit<VitalsState, "riskFlags" | "bmi" | "map" | "customVitals">;
   onChange: (
-    field: keyof Omit<VitalsState, "riskFlags" | "bmi" | "map">,
+    field: keyof Omit<
+      VitalsState,
+      "riskFlags" | "bmi" | "map" | "customVitals"
+    >,
     value: string
   ) => void;
   error?: string;
