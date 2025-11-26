@@ -15,7 +15,9 @@ import Cookies from "js-cookie";
 import { auth, db } from "../firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
+// ✅ UPDATED: Added "admin" to UserRole type
 export type UserRole =
+  | "admin"
   | "doctor"
   | "pharmacist"
   | "technician"
@@ -62,7 +64,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userRole = Cookies.get("userRole");
         const userName = Cookies.get("userName");
 
-        // Check if both cookies exist
         if (userRole && userName) {
           setUser({
             id: firebaseUser.uid,
@@ -71,17 +72,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             name: userName,
           });
         } else {
-          // If cookies are missing, but a Firebase user exists, we have an inconsistency.
-          // This can happen on app start or if cookies are cleared.
-          // Re-fetch user data from Firestore to ensure integrity.
           const q = query(
-            collection(db, "doctors"), // Assuming 'doctors' is the primary source
+            collection(db, "doctors"),
             where("email", "==", firebaseUser.email)
           );
           const querySnapshot = await getDocs(q);
           if (!querySnapshot.empty) {
             const doctorData = querySnapshot.docs[0].data();
-            const fetchedRole = "doctor"; // Assume doctor if found in doctors collection
+            const fetchedRole = "doctor";
             const fetchedName = doctorData.doc_name;
 
             Cookies.set("userRole", fetchedRole, { expires: 7 });
@@ -112,10 +110,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     role: UserRole
   ): Promise<boolean> => {
     try {
-      // The actual login logic is now handled by the LoginPage component
-      // This context function is just to be consistent with the provided structure.
-      // Since LoginPage handles it, we can leave this simple or remove it.
-      // For now, let's keep it but note that its use is optional with the new structure.
       await signInWithEmailAndPassword(auth, email, password);
       return true;
     } catch (error) {
@@ -127,7 +121,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       await signOut(auth);
-      // onAuthStateChanged will handle clearing the user state and cookies
     } catch (error) {
       console.error("Logout failed:", error);
     }

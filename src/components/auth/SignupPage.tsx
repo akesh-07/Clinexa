@@ -44,6 +44,7 @@ const userRoles = [
   { value: "technician", label: "Technician" },
   { value: "receptionist", label: "Receptionist" },
   { value: "staff-nurse", label: "Staff Nurse" },
+  { value: "admin", label: "admin" }, // ⬅️ ADDED ADMIN ROLE
 ];
 
 const SignupPage: React.FC = () => {

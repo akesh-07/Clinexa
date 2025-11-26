@@ -18,8 +18,9 @@ interface LoginForm {
 }
 
 // Keep role routes defined for navigation, independent of dropdown UI
-const roleInfo: { value: UserRole, icon: string, route: string }[] = [
+const roleInfo: { value: UserRole; icon: string; route: string }[] = [
   { value: "doctor", icon: "👨‍⚕️", route: "/pre-opd" },
+  { value: "admin", icon: "🛠️", route: "/pre-opd" }, // admin -> same as doctor
   { value: "pharmacist", icon: "💊", route: "/pharmacy" },
   { value: "technician", icon: "🔬", route: "/lab-requests" },
   { value: "receptionist", icon: "📋", route: "/registration" },
@@ -51,12 +52,8 @@ const LoginPage: React.FC = () => {
     if (loginError) setLoginError("");
   };
 
-  // Removed handleRoleSelect and isDropdownOpen state
-
   const validateForm = (): boolean => {
     const newErrors: Partial<LoginForm> = {};
-
-    // Role check removed
 
     if (!formData.email) {
       newErrors.email = "Email is required";
@@ -98,18 +95,23 @@ const LoginPage: React.FC = () => {
       let userRole: UserRole | string = "";
 
       // 2. Fetch role and name from 'staff' collection (as primary source for all staff)
-      const staffQuery = query(collection(db, "staff"), where("email", "==", normalizedEmail));
+      const staffQuery = query(
+        collection(db, "staff"),
+        where("email", "==", normalizedEmail)
+      );
       let snap = await getDocs(staffQuery);
 
       if (!snap.empty) {
         // User found in staff collection
         const docData = snap.docs[0].data() as any;
         userName = docData.sName;
-        userRole = docData.role;
-
+        userRole = docData.role as UserRole;
       } else {
         // 3. Fallback check: Check 'doctors' collection (for existing doctor data not mirrored in staff)
-        const doctorQuery = query(collection(db, "doctors"), where("email", "==", normalizedEmail));
+        const doctorQuery = query(
+          collection(db, "doctors"),
+          where("email", "==", normalizedEmail)
+        );
         snap = await getDocs(doctorQuery);
 
         if (!snap.empty) {
@@ -118,13 +120,15 @@ const LoginPage: React.FC = () => {
           userRole = "doctor"; // Explicitly set role for records in doctors collection
         } else {
           // Final fallback if no user data/role is found
-          throw new Error("User role not configured. Please contact administration.");
+          throw new Error(
+            "User role not configured. Please contact administration."
+          );
         }
       }
 
       // Check if a valid role was found
-      if (!userRole || !roleInfo.some(r => r.value === userRole)) {
-         throw new Error("User role not recognized or configured correctly.");
+      if (!userRole || !roleInfo.some((r) => r.value === userRole)) {
+        throw new Error("User role not recognized or configured correctly.");
       }
 
       // Store secure cookies
@@ -168,7 +172,7 @@ const LoginPage: React.FC = () => {
       } else if (error.code === "auth/network-request-failed") {
         errorMessage = "Network error. Please check your connection.";
       } else if (error.message.includes("User role not configured")) {
-         errorMessage = "Staff record not found. Please contact administration.";
+        errorMessage = "Staff record not found. Please contact administration.";
       }
 
       setLoginError(errorMessage);
@@ -176,7 +180,6 @@ const LoginPage: React.FC = () => {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#e0f7fa] via-white to-[#e0f2f1] flex items-center justify-center p-4">
@@ -190,7 +193,9 @@ const LoginPage: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8 backdrop-blur-sm border border-gray-100">
-          <h2 className="text-2xl font-bold text-[#0B2D4D] text-center mb-6">Sign In</h2>
+          <h2 className="text-2xl font-bold text-[#0B2D4D] text-center mb-6">
+            Sign In
+          </h2>
           {loginError && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-lg text-red-600">{loginError}</p>
@@ -198,7 +203,6 @@ const LoginPage: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            
             {/* EMAIL FIELD */}
             <div className="space-y-2">
               <label className="block text-lg font-medium text-[#0B2D4D]">
@@ -214,7 +218,9 @@ const LoginPage: React.FC = () => {
                   onChange={handleInputChange}
                   autoComplete="email"
                   className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#1a4b7a] ${
-                    errors.email ? "border-red-500 bg-red-50" : "border-gray-300"
+                    errors.email
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300"
                   }`}
                   placeholder="Enter your email"
                 />
@@ -273,7 +279,9 @@ const LoginPage: React.FC = () => {
                   type="checkbox"
                   className="rounded border-gray-300 text-[#012e58]"
                 />
-                <span className="ml-2 text-lg text-[#1a4b7a]">Remember me</span>
+                <span className="ml-2 text-lg text-[#1a4b7a]">
+                  Remember me
+                </span>
               </label>
 
               <Link
