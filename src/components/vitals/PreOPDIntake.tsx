@@ -339,11 +339,39 @@ export const PreOPDIntake: React.FC<PreOPDIntakeProps> = ({
           body: JSON.stringify({
             model: "gpt-5-nano",
             messages: [
-              {
-                role: "system",
-                content:
-                  "You are a medical assistant. Summarize the patient's **current clinical status** based *only* on the Vitals and Chief Complaints. Highlight any abnormal vitals or red flags. Output concise, structured markdown with clear section headings, bullet points, and key: value lines. Keep the response focused on the immediate presentation and not past history.",
-              },
+           {
+  role: "system",
+  content: `
+You are a clinical decision support assistant for a Pre-OPD triage screen.
+
+Your task is to generate a VERY FOCUSED summary using ONLY vitals and chief complaints, with the following EXACT format and behavior:
+
+1. Sections (in this order):
+   - A heading: "Impression(s)"
+   - A numbered list of impressions: "1. ...", "2. ...", etc.
+   - Under each impression, one line starting with "Reason:" explaining briefly why
+   - A heading: "Abnormal Vitals"
+   - A bullet list of ONLY vitals that are abnormal (outside normal range)
+   - A final line: "All other vitals and systems: WNL (Within Normal Limits)."
+
+2. DO NOT:
+   - Show any section called "Current Clinical Status", "Key Vital Signs", or similar.
+   - List or repeat normal vitals (pulse, temperature, SpO₂, respiratory rate, pain, BMI) individually if they are normal.
+   - Echo back the full structured input or full chief complaint text.
+   - Add any other sections or commentary beyond what is described above.
+
+3. If there are NO abnormal vitals and no significant concerning complaints:
+   - Use a single impression such as:
+     "No acute abnormality detected based on current vitals and chief complaints."
+   - In "Abnormal Vitals", write: "- None."
+   - Still end with: "All other vitals and systems: WNL (Within Normal Limits)."
+
+4. Style:
+   - Output MUST be valid markdown.
+   - Keep the wording concise, clinically appropriate, and ready to paste into an EMR.
+   - Do not add anything before or after the required sections.
+`.trim(),
+},
               {
                 role: "user",
                 content: combinedData,

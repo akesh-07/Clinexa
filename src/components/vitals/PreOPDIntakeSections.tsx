@@ -615,7 +615,8 @@ export const ChronicConditionsSection: React.FC<
                                     updateCondition(condition.id, {
                                       duration: {
                                         ...(condition.duration as any),
-                                        months: parseInt(e.target.value) || 0,
+                                        months:
+                                          parseInt(e.target.value) || 0,
                                       },
                                     })
                                   }
@@ -1604,7 +1605,8 @@ export const RecordsUploadSection: React.FC<RecordsUploadSectionProps> = ({
                     files
                   </p>
                   <p className="text-md text-gray-500 mb-3">
-                    Drag and drop or **click to browse** • PDF, DOCX, JPG, PNG
+                    Drag and drop or <b>click to browse</b> • PDF, DOCX, JPG,
+                    PNG
                   </p>
                   <div className="px-4 py-2 bg-[#012e58] text-white rounded-md hover:bg-[#1a4b7a] transition-colors text-lg inline-block">
                     Browse Files
@@ -1653,7 +1655,7 @@ export const RecordsUploadSection: React.FC<RecordsUploadSectionProps> = ({
   );
 };
 
-// --- 6. AI Clinical Summary Section ---
+// --- 6. AI Clinical Summary Section (Pre-OPD Impressions Only) ---
 interface AiClinicalSummarySectionProps {
   summary: string;
   isLoading: boolean;
@@ -1662,6 +1664,13 @@ interface AiClinicalSummarySectionProps {
   onGenerate: () => void;
 }
 
+/**
+ * Pre-OPD AI Clinical Impressions:
+ * - Only show AI-generated impressions + brief reasons.
+ * - Only list abnormal vitals explicitly.
+ * - All other vitals / systems are considered WNL (Within Normal Limits).
+ * - Do NOT echo raw vitals / chief complaint inputs here.
+ */
 export const AiClinicalSummarySection: React.FC<
   AiClinicalSummarySectionProps
 > = ({ summary, isLoading, isExpanded, onToggleExpand, onGenerate }) => {
@@ -1676,7 +1685,7 @@ export const AiClinicalSummarySection: React.FC<
           <div className="flex items-center space-x-2">
             <Bot className="w-5 h-5 text-[#012e58]" />
             <h2 className="text-lg font-semibold text-[#0B2D4D]">
-              7. AI Clinical Summary (Vitals + Complaints)
+              7. AI Clinical Impressions (Pre-OPD)
             </h2>
           </div>
           <div className="flex items-center space-x-2">
@@ -1712,7 +1721,7 @@ export const AiClinicalSummarySection: React.FC<
                 <Bot className="w-4 h-4" />
               )}
               <span>
-                {isLoading ? "Generating..." : "Generate Clinical Summary"}
+                {isLoading ? "Generating..." : "Generate Clinical Impressions"}
               </span>
             </button>
           </div>
@@ -1720,13 +1729,24 @@ export const AiClinicalSummarySection: React.FC<
       </div>
 
       <div className="p-4">
+        {/* Helper note for clinicians about what is shown */}
+        <p className="mb-3 text-sm text-gray-500">
+          This section shows only{" "}
+          <span className="font-semibold">clinical impressions</span> with{" "}
+          <span className="font-semibold">reasons</span> and any{" "}
+          <span className="font-semibold">abnormal vitals</span>. All other
+          vitals and systems are assumed{" "}
+          <span className="font-semibold">WNL (Within Normal Limits)</span>.
+        </p>
+
         {!summary && !isLoading && (
           <div className="text-center py-8 text-gray-500">
             <Bot className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-            <p>No AI clinical summary generated yet</p>
+            <p>No AI clinical impressions generated yet</p>
             <p className="text-lg">
-              Click "Generate Clinical Summary" to analyze current vitals and
-              complaints.
+              Click &quot;Generate Clinical Impressions&quot; to obtain
+              impression + reasoning based on vitals and chief complaints. Normal
+              findings are summarized as WNL.
             </p>
           </div>
         )}
@@ -1735,13 +1755,18 @@ export const AiClinicalSummarySection: React.FC<
           <div className="flex items-center justify-center py-8">
             <Loader className="w-8 h-8 animate-spin text-[#012e58] mr-3" />
             <span className="text-gray-600">
-              Analyzing patient data and generating summary...
+              Analyzing patient data and generating impressions...
             </span>
           </div>
         )}
 
         {summary && isExpanded && (
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            {/* Expect summary to contain:
+                - "Impression(s)" heading
+                - numbered list with "Reason:"
+                - "Abnormal Vitals" section
+                - Final line "All other vitals and systems: WNL (Within Normal Limits)." */}
             <FormattedAiSummary summary={summary} />
           </div>
         )}
@@ -1862,6 +1887,7 @@ export const PreviousMedicalHistorySummarySection: React.FC<
     </div>
   );
 };
+
 //
 // Re-export all necessary components
 export {

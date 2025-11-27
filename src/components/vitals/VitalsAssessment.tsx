@@ -706,7 +706,7 @@ export const VitalsAssessment: React.FC<VitalsAssessmentProps> = ({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer `,
+            Authorization: ``,
           },
           body: JSON.stringify({
             model: "gpt-5-nano",
