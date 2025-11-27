@@ -336,63 +336,102 @@ export const PreOPDIntake: React.FC<PreOPDIntakeProps> = ({
             "Content-Type": "application/json",
             Authorization: `Bearer  `,
           },
-          body: JSON.stringify({
-            model: "gpt-5-nano",
-            messages: [
-           {
-  role: "system",
-  content: `
+           body: JSON.stringify({
+      model: "gpt-5-nano",
+      messages: [
+        {
+          role: "system",
+          content: `
 You are a clinical decision support assistant for a Pre-OPD triage screen.
 
-Your task is to generate a VERY FOCUSED summary using ONLY vitals and chief complaints, with the following EXACT format and behavior:
+Your task is to generate a concise, clinically appropriate summary using ONLY vitals and chief complaints, following EXACTLY the format and behavior rules below.
 
-1. Sections (in this order):
-   - A heading: "Impression(s)"
-   - A numbered list of impressions: "1. ...", "2. ...", etc.
-   - Under each impression, one line starting with "Reason:" explaining briefly why
-   - A heading: "Abnormal Vitals"
-   - A bullet list of ONLY vitals that are abnormal (outside normal range)
-   - A final line: "All other vitals and systems: WNL (Within Normal Limits)."
+---
 
-2. DO NOT:
-   - Show any section called "Current Clinical Status", "Key Vital Signs", or similar.
-   - List or repeat normal vitals (pulse, temperature, SpO₂, respiratory rate, pain, BMI) individually if they are normal.
-   - Echo back the full structured input or full chief complaint text.
-   - Add any other sections or commentary beyond what is described above.
+### OUTPUT FORMAT (STRICT)
 
-3. If there are NO abnormal vitals and no significant concerning complaints:
-   - Use a single impression such as:
-     "No acute abnormality detected based on current vitals and chief complaints."
-   - In "Abnormal Vitals", write: "- None."
-   - Still end with: "All other vitals and systems: WNL (Within Normal Limits)."
+#### 1️⃣ Heading:
+**Impression(s)**
 
-4. Style:
-   - Output MUST be valid markdown.
-   - Keep the wording concise, clinically appropriate, and ready to paste into an EMR.
-   - Do not add anything before or after the required sections.
+#### 2️⃣ Numbered impressions:
+- Use "1.", "2.", etc.
+- Each impression should be short, clinical, and based ONLY on chief complaints and abnormal vitals.
+
+#### 3️⃣ Reason line under each impression:
+- Must begin with: **Reason:**
+- Provide one single line, but it may include multiple short clauses.
+- Include relevant abnormal vital values (if any), key symptoms, severity descriptors, and time course if present.
+- Tone must be clinical, concise, and infer reasonable clinical meaning (e.g., "suggestive of infection," "consistent with uncontrolled hypertension").
+
+#### 4️⃣ Heading:
+**Abnormal Vitals**
+
+#### 5️⃣ Bullet list:
+- List ONLY vitals that are outside normal range.
+- Format: "- BP: 168/102 mmHg (elevated)" or similar.
+- If NO abnormal vitals: "- None."
+
+#### 6️⃣ Final line:
+**All other vitals and systems: WNL (Within Normal Limits).**
+
+---
+
+### RULES
+
+- DO NOT repeat or list normal vitals.
+- DO NOT add extra sections beyond those defined.
+- DO NOT echo complaints verbatim; extract only clinically meaningful components (e.g., "burning urination × 2 days" instead of paragraph text).
+- If no abnormal vitals and no concerning chief complaint:
+  - Use a single impression:  
+    "No acute abnormality detected based on current vitals and chief complaints."
+
+- ALWAYS end the output with:  
+  **All other vitals and systems: WNL (Within Normal Limits).**
+
+---
+
+### EXAMPLE OUTPUT
+
+Impression(s)
+1. Suspected community-acquired infection.
+Reason: Febrile at 38.5°C with sore throat, productive cough, and fatigue for 3 days, suggesting evolving infectious etiology.
+
+2. Mild dehydration (probable).
+Reason: Tachycardia at 108 bpm with patient-reported dizziness and reduced oral intake over the past 24 hours.
+
+Abnormal Vitals
+- Temp: 38.5°C (fever)
+- HR: 108 bpm (tachycardia)
+
+All other vitals and systems: WNL (Within Normal Limits).
+
+---
+
+When data is provided, generate the summary EXACTLY in this format with no additional commentary.
 `.trim(),
-},
-              {
-                role: "user",
-                content: combinedData,
-              },
-            ],
-            //temperature: 0.2,
-          }),
-        }
-      );
-      const data = await response.json();
-      const summary =
-        data?.choices?.[0]?.message?.content?.trim() ||
-        "Could not generate clinical summary.";
-      setClinicalSummary(summary);
-      setClinicalExpanded(true);
-    } catch (error) {
-      console.error("Error generating AI clinical summary:", error);
-      setClinicalSummary(
-        "An error occurred while generating the clinical summary."
-      );
-    } finally {
+        },
+        {
+          role: "user",
+          content: combinedData, // your vitals + chief complaints string
+        },
+      ],
+      // temperature: 0.2, // optional
+    }),
+  });
+
+  const data = await response.json();
+
+  const summary =
+    data?.choices?.[0]?.message?.content?.trim() ||
+    "Could not generate clinical summary.";
+
+  setClinicalSummary(summary);
+  setClinicalExpanded(true);
+} catch (error) {
+  console.error("Error generating clinical summary:", error);
+  setClinicalSummary("Could not generate clinical summary.");
+  setClinicalExpanded(true);
+} finally {
       setIsClinicalLoading(false);
     }
   }, [selectedPatient, fetchLatestVitals, intakeData.complaints]);
