@@ -1,5 +1,5 @@
 // src/components/doctor/Ai.tsx
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Copy,
   Plus,
@@ -15,6 +15,19 @@ import { Patient, Medication } from "../../types";
 import { usePrescription } from "../../contexts/PrescriptionContext";
 import { db } from "../../firebase";
 import { collection, addDoc } from "firebase/firestore";
+
+// --- RESIZE HANDLE COMPONENT ---
+const HorizontalResizeHandle: React.FC<{
+  onMouseDown: (e: React.MouseEvent) => void;
+}> = ({ onMouseDown }) => (
+  <div
+    onMouseDown={onMouseDown}
+    className="hidden lg:flex w-4 items-center justify-center cursor-col-resize hover:bg-gray-100 transition-colors group z-10 self-stretch"
+    title="Drag to resize column width"
+  >
+    <div className="w-1 h-8 bg-gray-300 rounded-full group-hover:bg-[#012e58] transition-colors" />
+  </div>
+);
 
 interface ConsultationData {
   symptoms: Array<{
@@ -83,6 +96,41 @@ const MedicalDashboard: React.FC<MedicalDashboardProps> = ({
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSendingLab, setIsSendingLab] = useState(false);
+
+  // --- HORIZONTAL RESIZE STATE ---
+  const [split, setSplit] = useState(50);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    draggingRef.current = true;
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!draggingRef.current || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const widthPercent = (x / rect.width) * 100;
+    setSplit(Math.max(20, Math.min(80, widthPercent)));
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    draggingRef.current = false;
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  }, [handleMouseMove]);
 
   // Ref for aborting requests
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -256,12 +304,6 @@ Do not include any explanatory text or markdown formatting outside of the JSON o
     }));
   };
 
-  const handleSendLabOrder = async () => {
-    // ... (same as before)
-    alert("Lab order functionality mock");
-    setIsSendingLab(false);
-  };
-
   const handleDiagnosisChange = (value: string) => {
     setDiagnosis((prev) => ({ ...prev, doctorEntry: value }));
     onDiagnosisUpdate(value);
@@ -272,7 +314,10 @@ Do not include any explanatory text or markdown formatting outside of the JSON o
   };
 
   return (
-    <div className="space-y-3 p-2 bg-gray-100 font-sans text-md">
+    <div
+      ref={containerRef}
+      className="space-y-3 p-2 bg-gray-100 font-sans text-md"
+    >
       <div className="bg-white p-2 rounded shadow border border-gray-200">
         {!isLoading ? (
           <button
@@ -297,49 +342,137 @@ Do not include any explanatory text or markdown formatting outside of the JSON o
         )}
       </div>
 
-      {/* Diagnosis Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div className="w-full bg-white p-2 rounded shadow border border-gray-200">
-          <div className="p-2 border-b border-gray-200">
-            <h3 className="text-lg font-bold text-[#0B2D4D] tracking-tight">
-              Diagnosis (ICD-10)
-            </h3>
-          </div>
-          <div className="p-2 space-y-1">
-            <div className="flex items-center gap-1">
-              <div className="bg-[#012e58]/10 p-1 rounded">
-                <User size={12} className="text-[#012e58]" />
+      {/* --- RESIZABLE CONTAINER START --- */}
+      <div className="flex flex-col lg:flex-row gap-2">
+        {/* LEFT COLUMN: Doctor Entries */}
+        <div
+          className="flex flex-col gap-2"
+          style={{ width: isDesktop ? `${split}%` : "100%" }}
+        >
+          {/* Diagnosis Input */}
+          <div className="w-full bg-white p-2 rounded shadow border border-gray-200 h-full">
+            <div className="p-2 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-[#0B2D4D] tracking-tight">
+                Diagnosis (ICD-10)
+              </h3>
+            </div>
+            <div className="p-2 space-y-1">
+              <div className="flex items-center gap-1">
+                <div className="bg-[#012e58]/10 p-1 rounded">
+                  <User size={12} className="text-[#012e58]" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Enter diagnosis"
+                  value={diagnosis.doctorEntry}
+                  onChange={(e) => handleDiagnosisChange(e.target.value)}
+                  className="flex-1 p-1.5 border border-gray-300 rounded bg-gray-50 focus:ring-1 focus:ring-[#012e58] focus:border-[#012e58] transition duration-200 ease-in-out text-[#0B2D4D] placeholder:text-gray-500 text-md"
+                />
               </div>
+            </div>
+          </div>
+
+          {/* Lab Input */}
+          <div className="w-full bg-white p-2 rounded shadow border border-gray-200 h-full">
+            <div className="p-2 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-[#0B2D4D] tracking-tight">
+                Lab Investigation
+              </h3>
+            </div>
+            <div className="p-2 space-y-2">
               <input
                 type="text"
-                placeholder="Enter diagnosis"
-                value={diagnosis.doctorEntry}
-                onChange={(e) => handleDiagnosisChange(e.target.value)}
-                className="flex-1 p-1.5 border border-gray-300 rounded bg-gray-50 focus:ring-1 focus:ring-[#012e58] focus:border-[#012e58] transition duration-200 ease-in-out text-[#0B2D4D] placeholder:text-gray-500 text-md"
+                placeholder="Enter lab investigation"
+                value={labInvestigation.doctorEntry}
+                onChange={(e) => handleLabInvestigationChange(e.target.value)}
+                className="w-full p-1.5 border border-gray-300 rounded bg-gray-50 focus:ring-1 focus:ring-[#012e58] focus:border-[#012e58] transition duration-200 ease-in-out text-[#0B2D4D] placeholder:text-gray-500 text-md"
               />
+              <div className="flex flex-col gap-1">
+                <div className="flex gap-2">
+                  {(["cbc", "lft", "rft"] as const).map((test) => (
+                    <span
+                      key={test}
+                      onClick={() => handleTestChange(test)}
+                      className={`cursor-pointer px-3 py-1 text-md font-semibold rounded-full border transition-all duration-200 ${
+                        labInvestigation.doctorTests[test]
+                          ? "bg-[#012e58] text-white border-[#012e58]"
+                          : "bg-white text-[#0B2D4D] border-gray-300 hover:bg-gray-100"
+                      }`}
+                    >
+                      {test.toUpperCase()}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={copyAiTests}
+                    className="flex items-center gap-1 px-2 py-1 text-md border border-[#012e58] rounded text-[#012e58] bg-white hover:bg-[#012e58] hover:text-white focus:outline-none focus:ring-1 focus:ring-[#012e58] transition-all duration-300"
+                  >
+                    <Copy size={10} /> Copy AI Tests
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div className="w-full bg-white p-2 rounded shadow border border-gray-200">
-          <div className="p-2 border-b border-gray-200">
-            <h3 className="text-lg font-bold text-[#0B2D4D] tracking-tight">
-              AI-Suggested Diagnosis
-            </h3>
-          </div>
-          <div className="p-2 space-y-1">
-            <div className="flex items-center gap-1">
-              <div className="bg-[#012e58]/10 p-1 rounded">
-                <Bot size={12} className="text-[#012e58]" />
+
+        {/* RESIZE HANDLE */}
+        <HorizontalResizeHandle onMouseDown={handleMouseDown} />
+
+        {/* RIGHT COLUMN: AI Suggestions */}
+        <div
+          className="flex flex-col gap-2"
+          style={{ width: isDesktop ? `calc(${100 - split}% - 1rem)` : "100%" }}
+        >
+          {/* AI Diagnosis */}
+          <div className="w-full bg-white p-2 rounded shadow border border-gray-200 h-full">
+            <div className="p-2 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-[#0B2D4D] tracking-tight">
+                AI-Suggested Diagnosis
+              </h3>
+            </div>
+            <div className="p-2 space-y-1">
+              <div className="flex items-center gap-1">
+                <div className="bg-[#012e58]/10 p-1 rounded">
+                  <Bot size={12} className="text-[#012e58]" />
+                </div>
+                <input
+                  type="text"
+                  value={diagnosis.aiSuggested}
+                  readOnly
+                  className="flex-1 p-1.5 border border-gray-300 rounded bg-gray-50 text-[#0B2D4D] text-md"
+                />
+                <button
+                  onClick={() =>
+                    copyToField(diagnosis.aiSuggested, "diagnosis")
+                  }
+                  className="px-2 py-1 border border-[#012e58] rounded text-[#012e58] bg-white hover:bg-[#012e58] hover:text-white focus:outline-none focus:ring-1 focus:ring-[#012e58] transition-all duration-300"
+                >
+                  <Copy size={10} />
+                </button>
               </div>
-              <input
-                type="text"
-                value={diagnosis.aiSuggested}
-                readOnly
-                className="flex-1 p-1.5 border border-gray-300 rounded bg-gray-50 text-[#0B2D4D] text-md"
-              />
+            </div>
+          </div>
+
+          {/* AI Lab */}
+          <div className="w-full bg-white p-2 rounded shadow border border-gray-200 h-full">
+            <div className="p-2 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-[#0B2D4D] tracking-tight">
+                AI Auto Suggestion Lab
+              </h3>
+            </div>
+            <div className="p-2 space-y-1">
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1 text-md bg-green-100 text-green-700 rounded-full font-medium">
+                  {labInvestigation.aiSuggestion || "No suggestions yet."}
+                </span>
+              </div>
               <button
-                onClick={() => copyToField(diagnosis.aiSuggested, "diagnosis")}
-                className="px-2 py-1 border border-[#012e58] rounded text-[#012e58] bg-white hover:bg-[#012e58] hover:text-white focus:outline-none focus:ring-1 focus:ring-[#012e58] transition-all duration-300"
+                onClick={() =>
+                  copyToField(labInvestigation.aiSuggestion, "labInvestigation")
+                }
+                disabled={!labInvestigation.aiSuggestion}
+                className="px-1 py-0.5 border border-[#012e58] rounded text-[#012e58] bg-white hover:bg-[#012e58] hover:text-white focus:outline-none focus:ring-1 focus:ring-[#012e58] transition-all duration-300 disabled:opacity-50"
               >
                 <Copy size={10} />
               </button>
@@ -347,74 +480,7 @@ Do not include any explanatory text or markdown formatting outside of the JSON o
           </div>
         </div>
       </div>
-
-      {/* Lab Investigation Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div className="w-full bg-white p-2 rounded shadow border border-gray-200">
-          <div className="p-2 border-b border-gray-200">
-            <h3 className="text-lg font-bold text-[#0B2D4D] tracking-tight">
-              Lab Investigation
-            </h3>
-          </div>
-          <div className="p-2 space-y-2">
-            <input
-              type="text"
-              placeholder="Enter lab investigation"
-              value={labInvestigation.doctorEntry}
-              onChange={(e) => handleLabInvestigationChange(e.target.value)}
-              className="w-full p-1.5 border border-gray-300 rounded bg-gray-50 focus:ring-1 focus:ring-[#012e58] focus:border-[#012e58] transition duration-200 ease-in-out text-[#0B2D4D] placeholder:text-gray-500 text-md"
-            />
-            <div className="flex flex-col gap-1">
-              <div className="flex gap-2">
-                {(["cbc", "lft", "rft"] as const).map((test) => (
-                  <span
-                    key={test}
-                    onClick={() => handleTestChange(test)}
-                    className={`cursor-pointer px-3 py-1 text-md font-semibold rounded-full border transition-all duration-200 ${
-                      labInvestigation.doctorTests[test]
-                        ? "bg-[#012e58] text-white border-[#012e58]"
-                        : "bg-white text-[#0B2D4D] border-gray-300 hover:bg-gray-100"
-                    }`}
-                  >
-                    {test.toUpperCase()}
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={copyAiTests}
-                  className="flex items-center gap-1 px-2 py-1 text-md border border-[#012e58] rounded text-[#012e58] bg-white hover:bg-[#012e58] hover:text-white focus:outline-none focus:ring-1 focus:ring-[#012e58] transition-all duration-300"
-                >
-                  <Copy size={10} /> Copy AI Tests
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="w-full bg-white p-2 rounded shadow border border-gray-200">
-          <div className="p-2 border-b border-gray-200">
-            <h3 className="text-lg font-bold text-[#0B2D4D] tracking-tight">
-              AI Auto Suggestion Lab
-            </h3>
-          </div>
-          <div className="p-2 space-y-1">
-            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 text-md bg-green-100 text-green-700 rounded-full font-medium">
-                {labInvestigation.aiSuggestion || "No suggestions yet."}
-              </span>
-            </div>
-            <button
-              onClick={() =>
-                copyToField(labInvestigation.aiSuggestion, "labInvestigation")
-              }
-              disabled={!labInvestigation.aiSuggestion}
-              className="px-1 py-0.5 border border-[#012e58] rounded text-[#012e58] bg-white hover:bg-[#012e58] hover:text-white focus:outline-none focus:ring-1 focus:ring-[#012e58] transition-all duration-300 disabled:opacity-50"
-            >
-              <Copy size={10} />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* --- RESIZABLE CONTAINER END --- */}
     </div>
   );
 };

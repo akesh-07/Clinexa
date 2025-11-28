@@ -1,8 +1,21 @@
 // src/components/prescription/PrescriptionModule.tsx
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Medication, Patient } from "../../types";
 import { FileText, X, Plus, Trash2, Bot } from "lucide-react";
 import { usePrescription } from "../../contexts/PrescriptionContext";
+
+// --- RESIZE HANDLE COMPONENT ---
+const HorizontalResizeHandle: React.FC<{
+  onMouseDown: (e: React.MouseEvent) => void;
+}> = ({ onMouseDown }) => (
+  <div
+    onMouseDown={onMouseDown}
+    className="hidden lg:flex w-4 items-center justify-center cursor-col-resize hover:bg-gray-100 transition-colors group z-10 self-stretch"
+    title="Drag to resize column width"
+  >
+    <div className="w-1 h-8 bg-gray-300 rounded-full group-hover:bg-[#012e58] transition-colors" />
+  </div>
+);
 
 const PrescriptionModule: React.FC<{
   selectedPatient: Patient;
@@ -22,6 +35,41 @@ const PrescriptionModule: React.FC<{
 
   // Custom diet input state
   const [customDiet, setCustomDiet] = useState("");
+
+  // --- HORIZONTAL RESIZE STATE ---
+  const [split, setSplit] = useState(50);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    draggingRef.current = true;
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!draggingRef.current || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const widthPercent = (x / rect.width) * 100;
+    setSplit(Math.max(20, Math.min(80, widthPercent)));
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    draggingRef.current = false;
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  }, [handleMouseMove]);
 
   const commonMedications = [
     "Paracetamol",
@@ -126,7 +174,6 @@ const PrescriptionModule: React.FC<{
     }));
   };
 
-  // Helper for row styling
   const getRowClass = (source: "ai" | "doctor") => {
     if (source === "ai") {
       return "bg-purple-100 hover:bg-purple-200 border-l-4 border-purple-600 transition-colors";
@@ -303,10 +350,13 @@ const PrescriptionModule: React.FC<{
         </div>
       </div>
 
-      {/* Advice and Diet Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      {/* Advice and Diet Row (RESIZABLE) */}
+      <div ref={containerRef} className="flex flex-col lg:flex-row gap-3">
         {/* General Advice */}
-        <div className="bg-white rounded-lg border border-gray-200 p-3">
+        <div
+          className="bg-white rounded-lg border border-gray-200 p-3 h-full"
+          style={{ width: isDesktop ? `${split}%` : "100%" }}
+        >
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-lg font-semibold text-[#0B2D4D]">
               General Advice
@@ -327,8 +377,13 @@ const PrescriptionModule: React.FC<{
           />
         </div>
 
+        <HorizontalResizeHandle onMouseDown={handleMouseDown} />
+
         {/* Diet Plan */}
-        <div className="bg-white rounded-lg border border-gray-200 p-3">
+        <div
+          className="bg-white rounded-lg border border-gray-200 p-3 h-full"
+          style={{ width: isDesktop ? `calc(${100 - split}% - 1rem)` : "100%" }}
+        >
           <h3 className="text-lg font-semibold text-[#0B2D4D] mb-2">
             Diet Plan
           </h3>
