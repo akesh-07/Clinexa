@@ -17,7 +17,7 @@ import {
   ClipboardList,
   Activity,
   GripHorizontal,
-  GripVertical, // Added for Horizontal Resize Handle
+  GripVertical, // Added for Resize/Drag Handles
 } from "lucide-react";
 import { db } from "../../firebase";
 import {
@@ -195,15 +195,25 @@ const AutocompleteInput: React.FC<{
 };
 
 // Helper component for section headers
-const SectionHeader: React.FC<{ icon: React.ElementType; title: string }> = ({
-  icon: Icon,
-  title,
-}) => (
-  <div className="flex items-center space-x-2 mb-3">
-    <div className="bg-[#012e58]/10 p-1.5 rounded-md">
-      <Icon className="w-4 h-4 text-[#012e58]" />
+const SectionHeader: React.FC<{
+  icon: React.ElementType;
+  title: string;
+  dragHandle?: React.ReactNode;
+}> = ({ icon: Icon, title, dragHandle }) => (
+  <div className="flex items-center justify-between mb-3 select-none">
+    <div className="flex items-center space-x-2">
+      <div className="bg-[#012e58]/10 p-1.5 rounded-md">
+        <Icon className="w-4 h-4 text-[#012e58]" />
+      </div>
+      <h2 className="text-lg font-bold text-[#0B2D4D] tracking-tight">
+        {title}
+      </h2>
     </div>
-    <h2 className="text-lg font-bold text-[#0B2D4D] tracking-tight">{title}</h2>
+    {dragHandle && (
+      <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#012e58] p-1 rounded hover:bg-gray-100 transition-colors">
+        {dragHandle}
+      </div>
+    )}
   </div>
 );
 
@@ -418,8 +428,7 @@ const InPatientAdmissionModal: React.FC<{
                   </p>
                 )}
               </div>
-
-              {/* Ward Number */}
+              {/* Other inputs... */}
               <div>
                 <label className="block text-md font-medium text-gray-700 mb-1">
                   Ward Number *
@@ -442,8 +451,6 @@ const InPatientAdmissionModal: React.FC<{
                   </p>
                 )}
               </div>
-
-              {/* Admission Date */}
               <div>
                 <label className="block text-md font-medium text-gray-700 mb-1">
                   Admission Date *
@@ -461,8 +468,6 @@ const InPatientAdmissionModal: React.FC<{
                   </p>
                 )}
               </div>
-
-              {/* Attending Doctor */}
               <div>
                 <label className="block text-md font-medium text-gray-700 mb-1">
                   Attending Doctor *
@@ -481,8 +486,6 @@ const InPatientAdmissionModal: React.FC<{
                   </p>
                 )}
               </div>
-
-              {/* Assigned Nurse */}
               <div>
                 <label className="block text-md font-medium text-gray-700 mb-1">
                   Assigned Nurse *
@@ -501,8 +504,6 @@ const InPatientAdmissionModal: React.FC<{
                   </p>
                 )}
               </div>
-
-              {/* Expected Discharge Date */}
               <div>
                 <label className="block text-md font-medium text-gray-700 mb-1">
                   Expected Discharge Date *
@@ -521,8 +522,6 @@ const InPatientAdmissionModal: React.FC<{
                 )}
               </div>
             </div>
-
-            {/* Reason for Admission */}
             <div>
               <label className="block text-md font-medium text-gray-700 mb-1">
                 Reason for Admission *
@@ -541,8 +540,6 @@ const InPatientAdmissionModal: React.FC<{
                 </p>
               )}
             </div>
-
-            {/* Additional Notes */}
             <div>
               <label className="block text-md font-medium text-gray-700 mb-1">
                 Additional Notes (Optional)
@@ -556,7 +553,6 @@ const InPatientAdmissionModal: React.FC<{
                 placeholder="Any special instructions or observations"
               ></textarea>
             </div>
-
             <div className="flex justify-end pt-4 border-t">
               <button
                 type="submit"
@@ -601,6 +597,18 @@ const DoctorModuleContent: React.FC<DoctorModuleProps> = ({
   const [isPreOpdLoading, setIsPreOpdLoading] = useState(true);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
 
+  // --- DRAG & DROP STATE ---
+  type SectionKey = "assessment" | "hpi" | "exam" | "ai" | "prescription";
+  const [sectionOrder, setSectionOrder] = useState<SectionKey[]>([
+    "assessment",
+    "hpi",
+    "exam",
+    "ai",
+    "prescription",
+  ]);
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+
   // --- VERTICAL RESIZE STATE ---
   const [sectionHeights, setSectionHeights] = useState({
     assessment: 500,
@@ -633,7 +641,44 @@ const DoctorModuleContent: React.FC<DoctorModuleProps> = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // --- VERTICAL DRAG HANDLERS ---
+  // --- DRAG & DROP HANDLERS ---
+  const handleDragStart = (
+    e: React.DragEvent<HTMLDivElement>,
+    position: number
+  ) => {
+    dragItem.current = position;
+    e.dataTransfer.effectAllowed = "move";
+    // Optional: Add styling to drag image if needed
+  };
+
+  const handleDragEnter = (
+    e: React.DragEvent<HTMLDivElement>,
+    position: number
+  ) => {
+    e.preventDefault();
+    dragOverItem.current = position;
+
+    // Optional: Implement real-time reordering visual feedback here
+    // For simplicity, we commit change on drop, but you could swap state here
+    if (
+      dragItem.current !== null &&
+      dragItem.current !== dragOverItem.current
+    ) {
+      const newOrder = [...sectionOrder];
+      const draggedItemContent = newOrder[dragItem.current];
+      newOrder.splice(dragItem.current, 1);
+      newOrder.splice(dragOverItem.current, 0, draggedItemContent);
+      setSectionOrder(newOrder);
+      dragItem.current = dragOverItem.current; // Sync index
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    dragItem.current = null;
+    dragOverItem.current = null;
+  };
+
+  // --- VERTICAL RESIZE HANDLERS ---
   const handleMouseDown = (
     section: keyof typeof sectionHeights,
     e: React.MouseEvent
@@ -1045,6 +1090,431 @@ const DoctorModuleContent: React.FC<DoctorModuleProps> = ({
     setShowSummaryModal(true);
   };
 
+  // --- RENDER SECTION FUNCTION ---
+  const renderSection = (key: SectionKey, index: number) => {
+    const commonWrapperClass =
+      "bg-white rounded-lg border border-gray-200 shadow-md overflow-hidden relative mb-4 transition-all duration-200";
+    const dragProps = {
+      draggable: true,
+      onDragStart: (e: React.DragEvent<HTMLDivElement>) =>
+        handleDragStart(e, index),
+      onDragEnter: (e: React.DragEvent<HTMLDivElement>) =>
+        handleDragEnter(e, index),
+      onDragEnd: handleDragEnd,
+      onDragOver: (e: React.DragEvent<HTMLDivElement>) => e.preventDefault(),
+    };
+
+    switch (key) {
+      case "assessment":
+        return (
+          <div
+            key="assessment"
+            className={commonWrapperClass}
+            style={{ height: sectionHeights.assessment }}
+            {...dragProps}
+          >
+            <div className="p-4 h-full flex flex-col overflow-hidden">
+              <SectionHeader
+                icon={Stethoscope}
+                title="Clinical Assessment"
+                dragHandle={<GripVertical className="w-5 h-5" />}
+              />
+              <div className="flex-1 overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="lg:col-span-3 bg-white p-4 rounded-lg border border-gray-200 shadow-md">
+                    <SectionHeader
+                      icon={Activity}
+                      title="Current Vitals Snapshot"
+                    />
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      {getVitalsDisplay().map((vital) => (
+                        <div
+                          key={vital.label}
+                          className="text-center p-3 bg-gradient-to-b from-gray-50 to-white rounded-md border border-gray-100"
+                        >
+                          <p className="text-md font-medium text-gray-500 mb-1">
+                            {vital.label}
+                          </p>
+                          <p className="font-bold text-lg text-[#0B2D4D]">
+                            {vital.value}
+                          </p>
+                          {vital.unit && (
+                            <p className="text-md text-gray-400 mt-0.5">
+                              {vital.unit}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {vitals && (
+                      <div className="mt-3 pt-2 border-t border-gray-200">
+                        <p className="text-md text-gray-600">
+                          Last recorded:{" "}
+                          {vitals.recordedAt &&
+                          (vitals.recordedAt as any).toDate
+                            ? (vitals.recordedAt as any)
+                                .toDate()
+                                .toLocaleString()
+                            : new Date(vitals.recordedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-[#0B2D4D] tracking-tight flex items-center space-x-2 mt-2">
+                      <Brain className="w-6 h-6 text-purple-600" />
+                      <span>Pre-OPD AI Summary & History</span>
+                    </h2>
+                    {/* --- HORIZONTAL RESIZABLE PRE-OPD SECTION --- */}
+                    <div
+                      ref={preOpdContainerRef}
+                      className="flex flex-col lg:flex-row gap-4"
+                    >
+                      <div
+                        style={{
+                          width: isDesktop ? `${preOpdColSplit}%` : "100%",
+                        }}
+                      >
+                        <SummaryCard
+                          title="Clinical Status (Vitals + Complaints)"
+                          summary={preOpdClinicalSummary}
+                          isLoading={isPreOpdLoading}
+                        />
+                      </div>
+
+                      <HorizontalResizeHandle
+                        onMouseDown={handlePreOpdHorizontalMouseDown}
+                      />
+
+                      <div
+                        style={{
+                          width: isDesktop
+                            ? `calc(${100 - preOpdColSplit}% - 1rem)`
+                            : "100%",
+                        }}
+                      >
+                        <SummaryCard
+                          title="Medical History (Records + Checklist)"
+                          summary={preOpdHistorySummary}
+                          isLoading={isPreOpdLoading}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="absolute bottom-0 w-full bg-white border-t border-gray-100">
+              <ResizeHandle
+                onMouseDown={(e) => handleMouseDown("assessment", e)}
+              />
+            </div>
+          </div>
+        );
+
+      case "hpi":
+        return (
+          <div
+            key="hpi"
+            className={commonWrapperClass}
+            style={{ height: sectionHeights.hpi }}
+            {...dragProps}
+          >
+            <div className="p-4 h-full flex flex-col overflow-hidden">
+              <SectionHeader
+                icon={ClipboardList}
+                title="History of Present Illness (HPI) & Complaints"
+                dragHandle={<GripVertical className="w-5 h-5" />}
+              />
+              <div className="flex-1 overflow-y-auto bg-gray-50 rounded-md border border-gray-200">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-[#012e58] to-[#1a4b7a] text-white">
+                      <th className="p-2 text-left font-semibold text-md">
+                        Symptom
+                      </th>
+                      <th className="p-2 text-left font-semibold text-md">
+                        Duration
+                      </th>
+                      <th className="p-2 text-left font-semibold text-md">
+                        Aggravating/Relieving Factors
+                      </th>
+                      <th className="p-2 text-center font-semibold text-md">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {consultation.symptoms.map((symptom) => (
+                      <tr key={symptom.id} className="border-t border-gray-200">
+                        <td className="p-2">
+                          <AutocompleteInput
+                            symptomId={symptom.id}
+                            value={symptom.symptom}
+                            onChange={(id, value) =>
+                              handleSymptomChange(id, "symptom", value)
+                            }
+                            symptomOptions={symptomOptions}
+                            addSymptomOption={addSymptomOption}
+                          />
+                        </td>
+                        <td className="p-2">
+                          <input
+                            type="text"
+                            value={symptom.duration}
+                            onChange={(e) =>
+                              handleSymptomChange(
+                                symptom.id,
+                                "duration",
+                                e.target.value
+                              )
+                            }
+                            className={inputStyle}
+                            placeholder="Duration (e.g., 2 days)"
+                          />
+                        </td>
+                        <td className="p-2">
+                          <input
+                            type="text"
+                            value={symptom.factors}
+                            onChange={(e) =>
+                              handleSymptomChange(
+                                symptom.id,
+                                "factors",
+                                e.target.value
+                              )
+                            }
+                            className={inputStyle}
+                            placeholder="Factors that worsen/improve"
+                          />
+                        </td>
+                        <td className="p-2 text-center">
+                          <button
+                            onClick={() => removeSymptomRow(symptom.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button
+                  onClick={addSymptomRow}
+                  className="w-full mt-2 flex items-center justify-center space-x-1.5 p-2 text-md font-medium text-[#012e58] bg-gray-100 hover:bg-gray-200 rounded-md"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Add Symptom</span>
+                </button>
+              </div>
+            </div>
+            <div className="absolute bottom-0 w-full bg-white border-t border-gray-100">
+              <ResizeHandle onMouseDown={(e) => handleMouseDown("hpi", e)} />
+            </div>
+          </div>
+        );
+
+      case "exam":
+        return (
+          <div
+            key="exam"
+            className={commonWrapperClass}
+            style={{ height: sectionHeights.exam }}
+            {...dragProps}
+          >
+            <div className="p-4 h-full flex flex-col overflow-hidden">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-lg font-bold text-[#0B2D4D] flex items-center gap-2">
+                  <Eye className="w-4 h-4" /> Examination & Diagnosis
+                </h2>
+                <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#012e58]">
+                  <GripVertical className="w-5 h-5" />
+                </div>
+              </div>
+              <div
+                ref={examContainerRef}
+                className="flex flex-col lg:flex-row gap-4 flex-1 overflow-y-auto"
+              >
+                <div
+                  className="bg-white p-4 rounded-lg border border-gray-200 shadow-md flex-shrink-0"
+                  style={{ width: isDesktop ? `${examColSplit}%` : "100%" }}
+                >
+                  <SectionHeader
+                    icon={Eye}
+                    title="General & Systemic Examination"
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    <div className="col-span-1">
+                      <label className="text-md font-medium text-[#1a4b7a] mb-2 block">
+                        General Findings
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          "Pallor",
+                          "Icterus",
+                          "Cyanosis",
+                          "Clubbing",
+                          "LAP",
+                        ].map((item) => (
+                          <label
+                            key={item}
+                            className="flex items-center space-x-1.5 p-2 bg-gray-50 rounded-md border border-gray-200 hover:bg-[#012e58]/5 transition-colors cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={consultation.generalExamination.includes(
+                                item
+                              )}
+                              onChange={(e) =>
+                                handleToggleGeneralExam(item, e.target.checked)
+                              }
+                              className="rounded border-gray-300 text-[#012e58] focus:ring-[#012e58] focus:ring-2"
+                            />
+                            <span className="text-md font-medium text-[#0B2D4D]">
+                              {item}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="col-span-1 space-y-2">
+                      {[
+                        { label: "CNS", placeholder: "CNS findings" },
+                        { label: "RS", placeholder: "Respiratory findings" },
+                        {
+                          label: "CVS",
+                          placeholder: "Cardiovascular findings",
+                        },
+                        { label: "P/A", placeholder: "Abdomen findings" },
+                      ].map((system) => {
+                        const currentEntry =
+                          consultation.systemicExamination.find((item) =>
+                            item.startsWith(`${system.label}:`)
+                          ) || `${system.label}: `;
+                        const currentValue = currentEntry.substring(
+                          system.label.length + 2
+                        );
+                        return (
+                          <div key={system.label} className="space-y-1">
+                            <label className="text-md font-semibold text-[#1a4b7a] block">
+                              {system.label}
+                            </label>
+                            <textarea
+                              className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 focus:ring-2 focus:ring-[#012e58] focus:border-[#012e58] transition duration-200 resize-none text-lg"
+                              rows={1}
+                              placeholder={system.placeholder}
+                              value={currentValue}
+                              onChange={(e) =>
+                                handleSystemicExamChange(
+                                  system.label,
+                                  e.target.value
+                                )
+                              }
+                            ></textarea>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <HorizontalResizeHandle
+                  onMouseDown={handleHorizontalMouseDown}
+                />
+                <div
+                  className="bg-white p-4 rounded-lg border border-gray-200 shadow-md flex-grow"
+                  style={{
+                    width: isDesktop
+                      ? `calc(${100 - examColSplit}% - 1rem)`
+                      : "100%",
+                  }}
+                >
+                  <SectionHeader icon={BookOpen} title="Notes and Diagnosis" />
+                  <textarea
+                    rows={4}
+                    placeholder="Enter final notes, diagnosis, or impression here before running AI analysis..."
+                    value={consultation.notes}
+                    onChange={(e) =>
+                      setConsultation((prev) => ({
+                        ...prev,
+                        notes: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a4b7a] focus:border-transparent text-lg resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="absolute bottom-0 w-full bg-white border-t border-gray-100">
+              <ResizeHandle onMouseDown={(e) => handleMouseDown("exam", e)} />
+            </div>
+          </div>
+        );
+
+      case "ai":
+        return (
+          <div
+            key="ai"
+            className={commonWrapperClass}
+            style={{ height: sectionHeights.ai }}
+            {...dragProps}
+          >
+            <div className="p-4 h-full flex flex-col overflow-hidden">
+              <SectionHeader
+                icon={Brain}
+                title="AI Diagnostic & Treatment Assist"
+                dragHandle={<GripVertical className="w-5 h-5" />}
+              />
+              <div className="flex-1 overflow-y-auto">
+                <Ai
+                  consultation={consultation}
+                  selectedPatient={selectedPatient}
+                  vitals={vitals}
+                  onDiagnosisUpdate={handleDiagnosisUpdate}
+                />
+              </div>
+            </div>
+            <div className="absolute bottom-0 w-full bg-white border-t border-gray-100">
+              <ResizeHandle onMouseDown={(e) => handleMouseDown("ai", e)} />
+            </div>
+          </div>
+        );
+
+      case "prescription":
+        return (
+          <div
+            key="prescription"
+            className={commonWrapperClass}
+            style={{ height: sectionHeights.prescription }}
+            {...dragProps}
+          >
+            <div className="p-4 h-full flex flex-col overflow-hidden">
+              <SectionHeader
+                icon={Pill}
+                title="Medication & Advice"
+                dragHandle={<GripVertical className="w-5 h-5" />}
+              />
+              <div className="flex-1 overflow-y-auto">
+                <PrescriptionModule
+                  selectedPatient={selectedPatient}
+                  consultation={consultation}
+                />
+              </div>
+            </div>
+            <div className="absolute bottom-0 w-full bg-white border-t border-gray-100">
+              <ResizeHandle
+                onMouseDown={(e) => handleMouseDown("prescription", e)}
+              />
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   if (!selectedPatient) {
     return <PatientQueue />;
   }
@@ -1085,320 +1555,8 @@ const DoctorModuleContent: React.FC<DoctorModuleProps> = ({
           </div>
         </div>
 
-        {/* --- ASSESSMENT & HISTORY SECTION (VERTICAL RESIZABLE) --- */}
-        <div
-          className="space-y-6 pb-6 border-b border-gray-200 overflow-y-auto"
-          style={{ height: sectionHeights.assessment }}
-        >
-          <h2 className="text-xl font-bold text-[#0B2D4D] tracking-tight flex items-center space-x-2">
-            <Stethoscope className="w-6 h-6" />
-            <span>Clinical Assessment</span>
-          </h2>
-
-          <div className="grid grid-cols-1 gap-4">
-            {/* Vitals Snapshot */}
-            <div className="lg:col-span-3 bg-white p-4 rounded-lg border border-gray-200 shadow-md">
-              <SectionHeader icon={Activity} title="Current Vitals Snapshot" />
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {getVitalsDisplay().map((vital) => (
-                  <div
-                    key={vital.label}
-                    className="text-center p-3 bg-gradient-to-b from-gray-50 to-white rounded-md border border-gray-100"
-                  >
-                    <p className="text-md font-medium text-gray-500 mb-1">
-                      {vital.label}
-                    </p>
-                    <p className="font-bold text-lg text-[#0B2D4D]">
-                      {vital.value}
-                    </p>
-                    {vital.unit && (
-                      <p className="text-md text-gray-400 mt-0.5">
-                        {vital.unit}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {vitals && (
-                <div className="mt-3 pt-2 border-t border-gray-200">
-                  <p className="text-md text-gray-600">
-                    Last recorded:{" "}
-                    {vitals.recordedAt && (vitals.recordedAt as any).toDate
-                      ? (vitals.recordedAt as any).toDate().toLocaleString()
-                      : new Date(vitals.recordedAt).toLocaleString()}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold text-[#0B2D4D] tracking-tight flex items-center space-x-2 mt-2">
-                <Brain className="w-6 h-6 text-purple-600" />
-                <span>Pre-OPD AI Summary & History</span>
-              </h2>
-              {/* --- HORIZONTAL RESIZABLE PRE-OPD SECTION --- */}
-              <div
-                ref={preOpdContainerRef}
-                className="flex flex-col lg:flex-row gap-4"
-              >
-                <div
-                  style={{
-                    width: isDesktop ? `${preOpdColSplit}%` : "100%",
-                  }}
-                >
-                  <SummaryCard
-                    title="Clinical Status (Vitals + Complaints)"
-                    summary={preOpdClinicalSummary}
-                    isLoading={isPreOpdLoading}
-                  />
-                </div>
-
-                <HorizontalResizeHandle
-                  onMouseDown={handlePreOpdHorizontalMouseDown}
-                />
-
-                <div
-                  style={{
-                    width: isDesktop
-                      ? `calc(${100 - preOpdColSplit}% - 1rem)`
-                      : "100%",
-                  }}
-                >
-                  <SummaryCard
-                    title="Medical History (Records + Checklist)"
-                    summary={preOpdHistorySummary}
-                    isLoading={isPreOpdLoading}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <ResizeHandle onMouseDown={(e) => handleMouseDown("assessment", e)} />
-
-        {/* --- HPI SECTION (VERTICAL RESIZABLE) --- */}
-        <div
-          className="bg-white p-4 rounded-lg border border-gray-200 shadow-md overflow-y-auto"
-          style={{ height: sectionHeights.hpi }}
-        >
-          <SectionHeader
-            icon={ClipboardList}
-            title="History of Present Illness (HPI) & Complaints"
-          />
-          <div className="overflow-x-auto bg-gray-50 rounded-md border border-gray-200">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-[#012e58] to-[#1a4b7a] text-white">
-                  <th className="p-2 text-left font-semibold text-md">
-                    Symptom
-                  </th>
-                  <th className="p-2 text-left font-semibold text-md">
-                    Duration
-                  </th>
-                  <th className="p-2 text-left font-semibold text-md">
-                    Aggravating/Relieving Factors
-                  </th>
-                  <th className="p-2 text-center font-semibold text-md">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {consultation.symptoms.map((symptom) => (
-                  <tr key={symptom.id} className="border-t border-gray-200">
-                    <td className="p-2">
-                      <AutocompleteInput
-                        symptomId={symptom.id}
-                        value={symptom.symptom}
-                        onChange={(id, value) =>
-                          handleSymptomChange(id, "symptom", value)
-                        }
-                        symptomOptions={symptomOptions}
-                        addSymptomOption={addSymptomOption}
-                      />
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="text"
-                        value={symptom.duration}
-                        onChange={(e) =>
-                          handleSymptomChange(
-                            symptom.id,
-                            "duration",
-                            e.target.value
-                          )
-                        }
-                        className={inputStyle}
-                        placeholder="Duration (e.g., 2 days)"
-                      />
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="text"
-                        value={symptom.factors}
-                        onChange={(e) =>
-                          handleSymptomChange(
-                            symptom.id,
-                            "factors",
-                            e.target.value
-                          )
-                        }
-                        className={inputStyle}
-                        placeholder="Factors that worsen/improve"
-                      />
-                    </td>
-                    <td className="p-2 text-center">
-                      <button
-                        onClick={() => removeSymptomRow(symptom.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button
-              onClick={addSymptomRow}
-              className="w-full mt-2 flex items-center justify-center space-x-1.5 p-2 text-md font-medium text-[#012e58] bg-gray-100 hover:bg-gray-200 rounded-md"
-            >
-              <Plus className="w-3 h-3" />
-              <span>Add Symptom</span>
-            </button>
-          </div>
-        </div>
-        <ResizeHandle onMouseDown={(e) => handleMouseDown("hpi", e)} />
-
-        {/* --- EXAM & NOTES SECTION (VERTICAL & HORIZONTAL RESIZABLE) --- */}
-        <div
-          ref={examContainerRef}
-          className="flex flex-col lg:flex-row gap-4 overflow-y-auto"
-          style={{ height: sectionHeights.exam }}
-        >
-          <div
-            className="bg-white p-4 rounded-lg border border-gray-200 shadow-md flex-shrink-0"
-            style={{ width: isDesktop ? `${examColSplit}%` : "100%" }}
-          >
-            <SectionHeader icon={Eye} title="General & Systemic Examination" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              <div className="col-span-1">
-                <label className="text-md font-medium text-[#1a4b7a] mb-2 block">
-                  General Findings
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {["Pallor", "Icterus", "Cyanosis", "Clubbing", "LAP"].map(
-                    (item) => (
-                      <label
-                        key={item}
-                        className="flex items-center space-x-1.5 p-2 bg-gray-50 rounded-md border border-gray-200 hover:bg-[#012e58]/5 transition-colors cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={consultation.generalExamination.includes(
-                            item
-                          )}
-                          onChange={(e) =>
-                            handleToggleGeneralExam(item, e.target.checked)
-                          }
-                          className="rounded border-gray-300 text-[#012e58] focus:ring-[#012e58] focus:ring-2"
-                        />
-                        <span className="text-md font-medium text-[#0B2D4D]">
-                          {item}
-                        </span>
-                      </label>
-                    )
-                  )}
-                </div>
-              </div>
-              <div className="col-span-1 space-y-2">
-                {[
-                  { label: "CNS", placeholder: "CNS findings" },
-                  { label: "RS", placeholder: "Respiratory findings" },
-                  { label: "CVS", placeholder: "Cardiovascular findings" },
-                  { label: "P/A", placeholder: "Abdomen findings" },
-                ].map((system) => {
-                  const currentEntry =
-                    consultation.systemicExamination.find((item) =>
-                      item.startsWith(`${system.label}:`)
-                    ) || `${system.label}: `;
-                  const currentValue = currentEntry.substring(
-                    system.label.length + 2
-                  );
-                  return (
-                    <div key={system.label} className="space-y-1">
-                      <label className="text-md font-semibold text-[#1a4b7a] block">
-                        {system.label}
-                      </label>
-                      <textarea
-                        className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 focus:ring-2 focus:ring-[#012e58] focus:border-[#012e58] transition duration-200 resize-none text-lg"
-                        rows={1}
-                        placeholder={system.placeholder}
-                        value={currentValue}
-                        onChange={(e) =>
-                          handleSystemicExamChange(system.label, e.target.value)
-                        }
-                      ></textarea>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-          <HorizontalResizeHandle onMouseDown={handleHorizontalMouseDown} />
-          <div
-            className="bg-white p-4 rounded-lg border border-gray-200 shadow-md flex-grow"
-            style={{
-              width: isDesktop ? `calc(${100 - examColSplit}% - 1rem)` : "100%",
-            }}
-          >
-            <SectionHeader icon={BookOpen} title="Notes and Diagnosis" />
-            <textarea
-              rows={4}
-              placeholder="Enter final notes, diagnosis, or impression here before running AI analysis..."
-              value={consultation.notes}
-              onChange={(e) =>
-                setConsultation((prev) => ({ ...prev, notes: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a4b7a] focus:border-transparent text-lg resize-none"
-            />
-          </div>
-        </div>
-        <ResizeHandle onMouseDown={(e) => handleMouseDown("exam", e)} />
-
-        {/* --- AI ASSIST SECTION (VERTICAL RESIZABLE) --- */}
-        <div
-          className="space-y-4 pt-6 pb-6 border-b border-gray-200 overflow-y-auto"
-          style={{ height: sectionHeights.ai }}
-        >
-          <h2 className="text-xl font-bold text-[#0B2D4D] tracking-tight flex items-center space-x-2">
-            <Brain className="w-6 h-6" />
-            <span>AI Diagnostic & Treatment Assist</span>
-          </h2>
-          <Ai
-            consultation={consultation}
-            selectedPatient={selectedPatient}
-            vitals={vitals}
-            onDiagnosisUpdate={handleDiagnosisUpdate}
-          />
-        </div>
-        <ResizeHandle onMouseDown={(e) => handleMouseDown("ai", e)} />
-
-        {/* --- PRESCRIPTION SECTION (VERTICAL RESIZABLE) --- */}
-        <div
-          className="space-y-4 pt-6 overflow-y-auto"
-          style={{ height: sectionHeights.prescription }}
-        >
-          <h2 className="text-xl font-bold text-[#0B2D4D] tracking-tight flex items-center space-x-2">
-            <Pill className="w-6 h-6" />
-            <span>Medication & Advice</span>
-          </h2>
-          <PrescriptionModule
-            selectedPatient={selectedPatient}
-            consultation={consultation}
-          />
-        </div>
-        <ResizeHandle onMouseDown={(e) => handleMouseDown("prescription", e)} />
+        {/* --- DYNAMIC SECTION RENDERING --- */}
+        <div>{sectionOrder.map((key, index) => renderSection(key, index))}</div>
 
         {/* --- ACTION FOOTER --- */}
         <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
